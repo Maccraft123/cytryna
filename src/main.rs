@@ -1,6 +1,6 @@
 use std::os::raw::c_char;
 use std::mem;
-use std::ops::Mul;
+use bitflags::bitflags;
 use static_assertions::assert_eq_size;
 
 // TODO:
@@ -8,9 +8,8 @@ use static_assertions::assert_eq_size;
 // - validate hashes
 // - validate sizes and offsets
 // - MediaSize<u32> if that shows up a lot
-// - bitflags! for flags
-#[derive(Debug, Clone)]
-#[repr(C, packed)]
+#[derive(Clone)]
+#[repr(C)]
 struct NcchHeader {
     sig: [u8; 0x100],
     magic: [u8; 4],
@@ -26,7 +25,7 @@ struct NcchHeader {
     exheader_hash: [u8; 0x20],
     exheader_size: u32,
     _reserved1: u32,
-    flags: u64,
+    flags: NcchFlags,
     plain_offset: u32,
     plain_size: u32,
     logo_offset: u32,
@@ -41,6 +40,42 @@ struct NcchHeader {
     _reserved3: u32,
     exefs_super_hash: [u8; 0x20],
     romfs_super_hash: [u8; 0x20],
+}
+assert_eq_size!([u8; 0x200], NcchHeader);
+
+#[derive(Clone, Debug)]
+#[repr(C)]
+struct NcchFlags {
+    unk0: u8,
+    unk1: u8,
+    unk2: u8,
+    two_keyslots: u8, // TODO: use bool if i can
+    content_platform: u8,
+    content_type: ContentType,
+    content_unit_size: u8,
+    options: NcchFlagsOptions
+}
+assert_eq_size!([u8; 0x8], NcchFlags);
+
+bitflags! {
+    #[derive(Debug, Clone, Copy)]
+    struct ContentType: u8 {
+        const DATA = 0x1;
+        const EXECUTABLE = 0x2;
+        const SYSTEMUPDATE = 0x4;
+        const MANUAL = 0x8;
+        const CHILD = 0x4 | 0x8;
+        const TRIAL = 0x10;
+        const _ = !0;
+    }
+    #[derive(Debug, Clone, Copy)]
+    struct NcchFlagsOptions: u8 {
+        const FIXED_CRYPTO_KEY = 0x1;
+        const NO_MOUNT_ROM_FS = 0x2;
+        const NO_CRYPTO = 0x4;
+        const NEW_KEY_Y_GENERATOR = 0x20;
+        const _ = !0;
+    }
 }
 
 #[repr(C, packed)]
@@ -101,11 +136,12 @@ impl ExeFs {
     }
 }
 
-#[repr(C, packed)]
+#[derive(Clone)]
+#[repr(C)]
 struct ExeFsHeader {
-    file_headers: [FileHeader; 10],
-    _reserved: [u8; 0x20],
-    file_hashes: [[u8; 32]; 10],
+    file_headers: [FileHeader; 8],
+    _reserved: [u8; 0x80],
+    file_hashes: [[u8; 32]; 8],
 }
 assert_eq_size!([u8; 0x200], ExeFsHeader);
 
@@ -116,26 +152,20 @@ impl ExeFsHeader {
         }
         let mut name = name.to_vec();
         name.resize(0x8, b'\0');
-        println!("{:x?}", name);
         for hdr in self.file_headers.iter() {
             if hdr.is_null() {
                 continue;
             }
-            println!("{:x?}", hdr);
             if name == hdr.name {
                 return Some(hdr);
             }
-
-            println!("{}", String::from_utf8_lossy(&hdr.name));
-            let slice: &[u8; 16] = unsafe { mem::transmute(hdr) };
-            println!("{:x?}", slice);
         }
 
         None
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone)]
 #[repr(C, packed)]
 struct FileHeader {
     name: [u8; 0x8],
@@ -154,8 +184,5 @@ fn main() {
     let file = std::env::args().nth(1).unwrap();
     let data = std::fs::read(file).unwrap();
     let ncch = Ncch::from_slice(&data);
-    let exefs_region = ncch.exefs_region().unwrap();
-    let exefs = ncch.exefs().unwrap();
-    let icon = exefs.file_by_name(b"icon").unwrap();
-    println!("{:x?}", icon);
+    println!("{:#?}", ncch.header.flags);
 }
