@@ -97,7 +97,7 @@ impl MetaRegion {
             .filter(|v| !v.is_null())
     }
     pub fn icon(&self) -> &Smdh {
-        println!("{:x?}", &self._reserved1);
+        assert_eq!(self.icon[..4], *b"SMDH");
         unsafe { mem::transmute(&self.icon) }
     }
 }
