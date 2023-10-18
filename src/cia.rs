@@ -3,9 +3,14 @@ use std::mem;
 use static_assertions::assert_eq_size;
 
 use crate::titleid::TitleId;
+use crate::smdh::Smdh;
 
 fn align(what: u32) -> usize {
-    (what + (0x40 - (what % 0x40))) as usize
+    if what % 0x40 != 0 {
+        (what + (0x40 - (what % 0x40))) as usize
+    } else {
+        what as usize
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -90,5 +95,9 @@ impl MetaRegion {
         let copy = self.dependencies;
         copy.into_iter()
             .filter(|v| !v.is_null())
+    }
+    pub fn icon(&self) -> &Smdh {
+        println!("{:x?}", &self._reserved1);
+        unsafe { mem::transmute(&self.icon) }
     }
 }
