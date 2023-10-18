@@ -14,10 +14,7 @@ assert_eq_size!(u64, TitleId);
 
 impl TitleId {
     pub fn is_null(&self) -> bool {
-        self.as_u64() == &0
-    }
-    pub fn as_u64(&self) -> &u64 {
-        unsafe { mem::transmute(&self) }
+        self.to_u64() == 0
     }
     pub fn to_u64(self) -> u64 {
         unsafe { mem::transmute(self) }

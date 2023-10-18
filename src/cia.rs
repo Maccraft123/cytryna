@@ -86,4 +86,9 @@ assert_eq_size!([u8; 0x3ac0], MetaRegion);
 
 impl MetaRegion {
     pub fn dependencies(&self) -> [TitleId; 0x30] { self.dependencies }
+    pub fn dependencies_iter(&self) -> impl Iterator<Item = TitleId> {
+        let copy = self.dependencies;
+        copy.into_iter()
+            .filter(|v| !v.is_null())
+    }
 }
