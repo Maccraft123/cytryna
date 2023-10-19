@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::mem;
 use bitflags::bitflags;
 use derivative::Derivative;
@@ -15,9 +14,9 @@ pub struct Smdh {
     titles: [SmdhTitle; 0x10],
     age_ratings: [AgeRating; 0x10],
     region_lockout: RegionLockout,
-    matchmaker_id: [u8; 0xc],
+    matchmaker_id: MatchmakerId,
     flags: SmdhFlags,
-    eula_version: u16,
+    eula_version: (u8, u8),
     #[derivative(Debug="ignore")] _reserved1: u16,
     optimal_animation_default_frame: f32,
     cec_id: u32,
@@ -36,7 +35,11 @@ impl Smdh {
     pub fn title(&self, lang: Language) -> &SmdhTitle { &self.titles[lang as usize] }
     pub fn age_rating(&self, region: AgeRatingRegion) -> AgeRating { self.age_ratings[region as usize] }
     pub fn region_lockout(&self) -> RegionLockout { self.region_lockout }
+    pub fn matchmaker_id(&self) -> &MatchmakerId { &self.matchmaker_id }
     pub fn flags(&self) -> SmdhFlags { self.flags }
+    pub fn eula_version(&self) -> (u8, u8) { self.eula_version }
+    pub fn optimal_animation_default_frame(&self) -> f32 { self.optimal_animation_default_frame }
+    pub fn cec_id(&self) -> u32 { self.cec_id }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -90,6 +93,19 @@ bitflags! {
         const DISABLE_SD_SAVE_BACKUP = 0x400;
         const NEW3DS_EXCLUSIVE = 0x1000;
     }
+}
+
+#[derive(Debug, Clone)]
+#[repr(C, packed)]
+pub struct MatchmakerId {
+    id: u32,
+    bit_id: u64,
+}
+assert_eq_size!([u8; 0xc], MatchmakerId);
+
+impl MatchmakerId {
+    pub fn id(&self) -> u32 { self.id }
+    pub fn bit_id(&self) -> u64 { self.bit_id}
 }
 
 #[derive(Debug, Clone, Copy)]
