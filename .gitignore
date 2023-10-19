@@ -1,2 +1,8 @@
 *.app
+*.cia
+*.ncch
+*.smdh
+*.bin
+*.romfs
+*.exefs
 /target
