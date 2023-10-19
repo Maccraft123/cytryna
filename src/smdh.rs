@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::ffi::CStr;
 use std::mem;
 use bitflags::bitflags;
 use derivative::Derivative;
@@ -108,20 +109,28 @@ pub enum Language {
     TraditionalChinese,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Derivative, Clone)]
+#[derivative(Debug)]
 #[repr(C)]
 pub struct SmdhTitle {
-    short_desc: [u8; 0x80],
-    long_desc: [u8; 0x100],
-    publisher: [u8; 0x80],
+    #[derivative(Debug(format_with="crate::smdh::format_title"))]
+    short_desc: [u16; 0x40],
+    #[derivative(Debug(format_with="crate::smdh::format_title"))]
+    long_desc: [u16; 0x80],
+    #[derivative(Debug(format_with="crate::smdh::format_title"))]
+    publisher: [u16; 0x40],
 }
 assert_eq_size!([u8; 0x200], SmdhTitle);
 
 impl SmdhTitle {
-    pub fn short_desc(&self) -> &[u8; 0x80] { &self.short_desc }
-    pub fn long_desc(&self) -> &[u8; 0x100] { &self.long_desc }
-    pub fn publisher(&self) -> &[u8; 0x80] { &self.publisher }
-    pub fn short_desc_string(&self) -> Cow<'_, str> { String::from_utf8_lossy(&self.short_desc) }
-    pub fn long_desc_string(&self) -> Cow<'_, str> { String::from_utf8_lossy(&self.long_desc) }
-    pub fn publisher_string(&self) -> Cow<'_, str> { String::from_utf8_lossy(&self.publisher) }
+    pub fn short_desc(&self) -> &[u16; 0x40] { &self.short_desc }
+    pub fn long_desc(&self) -> &[u16; 0x80] { &self.long_desc }
+    pub fn publisher(&self) -> &[u16; 0x40] { &self.publisher }
+    pub fn short_desc_string(&self) -> String { String::from_utf16_lossy(&self.short_desc) }
+    pub fn long_desc_string(&self) -> String { String::from_utf16_lossy(&self.long_desc) }
+    pub fn publisher_string(&self) -> String { String::from_utf16_lossy(&self.publisher) }
+}
+
+fn format_title(title: &[u16], fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fmt.write_fmt(format_args!("\"{}\"", String::from_utf16_lossy(title)))
 }
