@@ -96,8 +96,6 @@ impl MetaRegion {
         copy.into_iter()
             .filter(|v| !v.is_null())
     }
-    pub fn icon(&self) -> &Smdh {
-        assert_eq!(self.icon[..4], *b"SMDH");
-        unsafe { mem::transmute(&self.icon) }
-    }
+    pub fn icon(&self) -> &Smdh { Smdh::from_bytes(&self.icon) }
+    pub fn smdh(&self) -> &Smdh { Smdh::from_bytes(&self.icon) }
 }

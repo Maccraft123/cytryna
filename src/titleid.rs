@@ -24,7 +24,7 @@ impl TitleId {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u16)]
 pub enum Platform {
-    Invalid = 0,
+    Invalid = 0, // placeholder for debug derive to not shit itself when titleid is 0
     Wii = 1,
     Dsi = 3,
     Ctr = 4,
