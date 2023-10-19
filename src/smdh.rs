@@ -1,25 +1,27 @@
 use std::borrow::Cow;
 use std::mem;
 use bitflags::bitflags;
+use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
-#[derive(Debug, Clone)]
+#[derive(Derivative, Clone)]
+#[derivative(Debug)]
 #[repr(C)]
 pub struct Smdh {
-    magic: [u8; 4],
+    #[derivative(Debug="ignore")] magic: [u8; 4],
     version: u16,
-    _reserved0: u16,
+    #[derivative(Debug="ignore")] _reserved0: u16,
     titles: [SmdhTitle; 0x10],
     age_ratings: [AgeRating; 0x10],
     region_lockout: RegionLockout,
     matchmaker_id: [u8; 0xc],
     flags: SmdhFlags,
     eula_version: u16,
-    _reserved1: u16,
+    #[derivative(Debug="ignore")] _reserved1: u16,
     optimal_animation_default_frame: f32,
     cec_id: u32,
-    _reserved2: u64,
-    icon: [u8; 0x1680],
+    #[derivative(Debug="ignore")] _reserved2: u64,
+    #[derivative(Debug="ignore")] icon: [u8; 0x1680],
 }
 assert_eq_size!([u8; 0x36c0], Smdh);
 

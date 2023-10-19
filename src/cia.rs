@@ -1,5 +1,6 @@
 use std::mem;
 
+use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
 use crate::titleid::TitleId;
@@ -13,10 +14,11 @@ fn align(what: u32) -> usize {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Derivative, Clone)]
+#[derivative(Debug)]
 #[repr(C, packed)]
 pub struct CiaHeader {
-    pub hdr_size: u32,
+    hdr_size: u32,
     ty: u16,
     version: u16,
     cert_size: u32,
@@ -24,17 +26,18 @@ pub struct CiaHeader {
     tmd_size: u32,
     meta_size: u32,
     content_size: u64,
-    content_index: [u8; 0x2000],
+    #[derivative(Debug="ignore")] content_index: [u8; 0x2000],
 }
 assert_eq_size!([u8; 0x2020], CiaHeader);
 
 #[repr(C, packed)]
 pub struct Cia {
-    pub header: CiaHeader,
+    header: CiaHeader,
     data: [u8],
 }
 
 impl Cia {
+    pub fn header(&self) -> &CiaHeader { &self.header }
     fn hdr_offset() -> usize {
         align(mem::size_of::<CiaHeader>() as u32) - mem::size_of::<CiaHeader>()
     }
@@ -85,7 +88,7 @@ pub struct MetaRegion {
     _reserved0: [u8; 0x180],
     core_version: u32,
     _reserved1: [u8; 0xfc],
-    icon: [u8; 0x36c0],
+    icon: [u8; 0x36c0], // should this be Smdh????
 }
 assert_eq_size!([u8; 0x3ac0], MetaRegion);
 

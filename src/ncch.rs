@@ -1,29 +1,32 @@
 use std::os::raw::c_char;
 use std::mem;
+
 use bitflags::bitflags;
+use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
 // TODO:
 // - validate hashes
 // - validate sizes and offsets
 // - MediaSize<u32> if that shows up a lot
-#[derive(Clone)]
+#[derive(Derivative, Clone)]
+#[derivative(Debug)]
 #[repr(C)]
 pub struct NcchHeader {
     sig: [u8; 0x100],
     magic: [u8; 4],
-    content_size: u32,
+    #[derivative(Debug="ignore")] content_size: u32,
     partition_id: u64,
     maker_code: [c_char; 2],
     version: u16,
     content_lock_seed_hash: u32,
     program_id: u64,
-    _reserved0: [u8; 0x10],
+    #[derivative(Debug="ignore")] _reserved0: [u8; 0x10],
     logo_region_hash: [u8; 0x20],
     product_code: [c_char; 0x10],
     exheader_hash: [u8; 0x20],
     exheader_size: u32,
-    _reserved1: u32,
+    #[derivative(Debug="ignore")] _reserved1: u32,
     flags: NcchFlags,
     plain_offset: u32,
     plain_size: u32,
@@ -32,11 +35,11 @@ pub struct NcchHeader {
     exefs_offset: u32,
     exefs_size: u32,
     exefs_hash_size: u32,
-    _reserved2: u32,
+    #[derivative(Debug="ignore")] _reserved2: u32,
     romfs_offset: u32,
     romfs_size: u32,
     romfs_hash_size: u32,
-    _reserved3: u32,
+    #[derivative(Debug="ignore")] _reserved3: u32,
     exefs_super_hash: [u8; 0x20],
     romfs_super_hash: [u8; 0x20],
 }
