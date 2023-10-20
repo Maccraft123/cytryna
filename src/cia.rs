@@ -16,7 +16,7 @@ fn align(what: u32) -> usize {
 
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
-#[repr(C, packed)]
+#[repr(C)]
 pub struct CiaHeader {
     hdr_size: u32,
     ty: u16,
@@ -30,7 +30,7 @@ pub struct CiaHeader {
 }
 assert_eq_size!([u8; 0x2020], CiaHeader);
 
-#[repr(C, packed)]
+#[repr(C)]
 pub struct Cia {
     header: CiaHeader,
     data: [u8],
@@ -82,7 +82,7 @@ impl Cia {
     }
 }
 
-#[repr(C, packed)]
+#[repr(C)]
 pub struct MetaRegion {
     dependencies: [TitleId; 0x30],
     _reserved0: [u8; 0x180],

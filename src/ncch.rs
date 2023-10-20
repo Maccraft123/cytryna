@@ -80,7 +80,7 @@ bitflags! {
     }
 }
 
-#[repr(C, packed)]
+#[repr(C)]
 pub struct Ncch {
     header: NcchHeader,
     data: [u8],
@@ -124,7 +124,7 @@ impl Ncch {
     pub fn flags(&self) -> &NcchFlags { &self.header.flags }
 }
 
-#[repr(C, packed)]
+#[repr(C)]
 pub struct ExeFs {
     header: ExeFsHeader,
     data: [u8],
@@ -171,7 +171,7 @@ impl ExeFsHeader {
 }
 
 #[derive(Clone)]
-#[repr(C, packed)]
+#[repr(C)]
 pub struct FileHeader {
     name: [u8; 0x8],
     offset: u32,
