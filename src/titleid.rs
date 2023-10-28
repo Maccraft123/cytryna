@@ -1,7 +1,8 @@
-use std::mem;
+use std::{fmt, mem};
 
 use bitflags::bitflags;
 use static_assertions::assert_eq_size;
+use redox_simple_endian::u32be;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(C)]
@@ -18,6 +19,24 @@ impl TitleId {
     }
     pub fn to_u64(self) -> u64 {
         unsafe { mem::transmute(self) }
+    }
+}
+
+// see crate::tmd::TmdInner for reason to exist...
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
+pub struct TitleIdBigEndian(u64);
+
+impl From<TitleIdBigEndian> for TitleId {
+    fn from(other: TitleIdBigEndian) -> TitleId {
+        unsafe { mem::transmute(other.0.swap_bytes()) }
+    }
+}
+
+impl fmt::Debug for TitleIdBigEndian {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let tid: TitleId = (*self).into();
+        tid.fmt(f)
     }
 }
 

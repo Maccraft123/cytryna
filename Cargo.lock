@@ -25,6 +25,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "derivative",
+ "redox_simple_endian",
  "static_assertions",
 ]
 
@@ -45,6 +46,12 @@ checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "redox_simple_endian"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4e4404b4e54e59e7bb5f5236b61d8e822c2a77b2e955be8072002ff7ff8d69c"
 
 [[package]]
 name = "static_assertions"

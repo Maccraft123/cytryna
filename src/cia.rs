@@ -4,6 +4,7 @@ use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
 use crate::titleid::TitleId;
+use crate::tmd::Tmd;
 use crate::smdh::Smdh;
 
 fn align(what: u32) -> usize {
@@ -37,14 +38,23 @@ pub struct Cia {
 }
 
 impl Cia {
-    pub fn header(&self) -> &CiaHeader { &self.header }
+    pub fn looks_ok(&self) -> bool {
+        self.header.hdr_size == mem::size_of::<CiaHeader>() as u32
+    }
+    pub fn header(&self) -> &CiaHeader {
+        &self.header
+    }
     fn hdr_offset() -> usize {
+        // including alignment, however, self.data doesn't include header
+        // so we have to subtract unaligned header size
         align(mem::size_of::<CiaHeader>() as u32) - mem::size_of::<CiaHeader>()
     }
     pub fn from_slice(what: &[u8]) -> &Self {
         let me: &Cia = unsafe { mem::transmute(what) };
+        assert!(me.looks_ok());
         me
     }
+
     pub fn cert_chain_region(&self) -> &[u8] {
         &self.data[Self::hdr_offset()..][..align(self.header.cert_size)]
     }
@@ -52,10 +62,11 @@ impl Cia {
         let offset = Self::hdr_offset() + align(self.header.cert_size);
         &self.data[offset..][..align(self.header.ticket_size)]
     }
-    pub fn tmd_region(&self) -> &[u8] {
+    pub fn tmd_region(&self) -> Option<Tmd> {
         let offset =
             Self::hdr_offset() + align(self.header.cert_size) + align(self.header.ticket_size);
-        &self.data[offset..][..align(self.header.tmd_size)]
+        //Some(unsafe { mem::transmute(&self.data[offset..][..align(self.header.tmd_size)]) })
+        Tmd::from_bytes(&self.data[offset..][..align(self.header.tmd_size)])
     }
     pub fn content_region(&self) -> &[u8] {
         let offset = Self::hdr_offset()
@@ -88,7 +99,7 @@ pub struct MetaRegion {
     _reserved0: [u8; 0x180],
     core_version: u32,
     _reserved1: [u8; 0xfc],
-    icon: [u8; 0x36c0], // should this be Smdh????
+    icon: Smdh,
 }
 assert_eq_size!([u8; 0x3ac0], MetaRegion);
 
@@ -99,6 +110,8 @@ impl MetaRegion {
         copy.into_iter()
             .filter(|v| !v.is_null())
     }
-    pub fn icon(&self) -> &Smdh { Smdh::from_bytes(&self.icon) }
-    pub fn smdh(&self) -> &Smdh { Smdh::from_bytes(&self.icon) }
+    pub fn icon(&self) -> &Smdh {
+        assert!(self.icon.looks_ok());
+        &self.icon
+    }
 }

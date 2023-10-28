@@ -16,7 +16,7 @@ pub struct Smdh {
     region_lockout: RegionLockout,
     matchmaker_id: MatchmakerId,
     flags: SmdhFlags,
-    eula_version: (u8, u8),
+    eula_version: EulaVersion,
     #[derivative(Debug="ignore")] _reserved1: u16,
     optimal_animation_default_frame: f32,
     cec_id: u32,
@@ -25,19 +25,23 @@ pub struct Smdh {
 }
 assert_eq_size!([u8; 0x36c0], Smdh);
 
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub struct EulaVersion {
+    major: u8,
+    minor: u8,
+}
+
 impl Smdh {
-    pub fn from_bytes(bytes: &[u8]) -> &Self {
-        assert!(bytes.len() >= mem::size_of::<Smdh>());
-        assert_eq!(bytes[..4], *b"SMDH");
-        let bytes = <&[u8; 0x36c0]>::try_from(bytes).unwrap();
-        unsafe { mem::transmute(bytes) }
+    pub fn looks_ok(&self) -> bool {
+        self.magic == *b"SMDH"
     }
     pub fn title(&self, lang: Language) -> &SmdhTitle { &self.titles[lang as usize] }
     pub fn age_rating(&self, region: AgeRatingRegion) -> AgeRating { self.age_ratings[region as usize] }
     pub fn region_lockout(&self) -> RegionLockout { self.region_lockout }
     pub fn matchmaker_id(&self) -> &MatchmakerId { &self.matchmaker_id }
     pub fn flags(&self) -> SmdhFlags { self.flags }
-    pub fn eula_version(&self) -> (u8, u8) { self.eula_version }
+    pub fn eula_version(&self) -> &EulaVersion { &self.eula_version }
     pub fn optimal_animation_default_frame(&self) -> f32 { self.optimal_animation_default_frame }
     pub fn cec_id(&self) -> u32 { self.cec_id }
 }
