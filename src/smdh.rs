@@ -21,7 +21,7 @@ pub struct Smdh {
     optimal_animation_default_frame: f32,
     cec_id: u32,
     #[derivative(Debug="ignore")] _reserved2: u64,
-    #[derivative(Debug="ignore")] icon: [u8; 0x1680],
+    #[derivative(Debug="ignore")] icon: SmdhIcon,
 }
 assert_eq_size!([u8; 0x36c0], Smdh);
 
@@ -153,4 +153,85 @@ impl SmdhTitle {
 
 fn format_title(title: &[u16], fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
     fmt.write_fmt(format_args!("\"{}\"", String::from_utf16_lossy(title)))
+}
+
+#[derive(Clone)]
+#[repr(C)]
+pub struct SmdhIcon {
+    small: IconData<0x240>,
+    big: IconData<0x900>,
+}
+assert_eq_size!([u8; 0x1680], SmdhIcon);
+
+#[derive(Clone)]
+pub struct IconData<const SIZE: usize> {
+    data: [u16; SIZE],
+}
+
+impl<const SIZE: usize> IconData<SIZE> {
+    pub fn raw_data(&self) -> &[u16; SIZE] {
+        &self.data
+    }
+}
+
+#[cfg(feature = "embedded_graphics")]
+use embedded_graphics::{
+    prelude::*,
+    pixelcolor::Rgb565,
+    primitives::Rectangle,
+};
+
+#[cfg(feature = "embedded_graphics")]
+impl<const SIZE: usize> IconData<SIZE> {
+    const TILE_ORDER: [u8; 64] =
+        [00,01,08,09,02,03,10,11,
+         16,17,24,25,18,19,26,27,
+         04,05,12,13,06,07,14,15,
+         20,21,28,29,22,23,30,31,
+         32,33,40,41,34,35,42,43,
+         48,49,56,57,50,51,58,59,
+         36,37,44,45,38,39,46,47,
+         52,53,60,61,54,55,62,63];
+    fn pixel(&self, x: u8, y: u8) -> u16 {
+        let tile_x = x - x % 8;
+        let tile_y = y - y % 8;
+
+        let mut offset = None;
+        for i in 0..64 {
+            let tmp_x = Self::TILE_ORDER[i] & 0x7;
+            let tmp_y = Self::TILE_ORDER[i] >> 3;
+            if tmp_x == x % 8 && tmp_y == y % 8 {
+                offset = Some(i as u8);
+                break;
+            }
+        }
+        self.data[(tile_y * 8 + tile_x + offset.unwrap()) as usize]
+    }
+}
+
+#[cfg(feature = "embedded_graphics")]
+impl<const SIZE: usize> ImageDrawable for IconData<SIZE> {
+    type Color = Rgb565;
+    
+    fn draw<D>(&self, target: &mut D) -> Result<(), D::Error>
+        where D: DrawTarget<Color = Self::Color>
+    {
+        todo!()
+    }
+    fn draw_sub_image<D>(&self, target: &mut D, area: &Rectangle) -> Result<(), D::Error>
+        where D: DrawTarget<Color = Self::Color>
+    {
+        todo!()
+    }
+}
+
+#[cfg(feature = "embedded_graphics")]
+impl<const SIZE: usize> OriginDimensions for IconData<SIZE> {
+    fn size(&self) -> Size {
+        match SIZE {
+            0x240 => Size::new(24, 24),
+            0x900 => Size::new(48, 48),
+            _ => panic!("Unsupported SMDH icon size"),
+        }
+    }
 }
