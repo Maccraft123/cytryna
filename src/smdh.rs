@@ -1,5 +1,8 @@
 use std::borrow::Cow;
 use std::mem;
+
+use crate::string::SizedCStringUtf16;
+
 use bitflags::bitflags;
 use derivative::Derivative;
 use static_assertions::assert_eq_size;
@@ -139,30 +142,19 @@ pub enum Language {
     TraditionalChinese,
 }
 
-#[derive(Derivative, Clone)]
-#[derivative(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct SmdhTitle {
-    #[derivative(Debug(format_with="crate::smdh::format_title"))]
-    short_desc: [u16; 0x40],
-    #[derivative(Debug(format_with="crate::smdh::format_title"))]
-    long_desc: [u16; 0x80],
-    #[derivative(Debug(format_with="crate::smdh::format_title"))]
-    publisher: [u16; 0x40],
+    short_desc: SizedCStringUtf16<0x40>,
+    long_desc: SizedCStringUtf16<0x80>,
+    publisher: SizedCStringUtf16<0x40>,
 }
 assert_eq_size!([u8; 0x200], SmdhTitle);
 
 impl SmdhTitle {
-    pub fn short_desc(&self) -> &[u16; 0x40] { &self.short_desc }
-    pub fn long_desc(&self) -> &[u16; 0x80] { &self.long_desc }
-    pub fn publisher(&self) -> &[u16; 0x40] { &self.publisher }
-    pub fn short_desc_string(&self) -> String { String::from_utf16_lossy(&self.short_desc) }
-    pub fn long_desc_string(&self) -> String { String::from_utf16_lossy(&self.long_desc) }
-    pub fn publisher_string(&self) -> String { String::from_utf16_lossy(&self.publisher) }
-}
-
-fn format_title(title: &[u16], fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-    fmt.write_fmt(format_args!("\"{}\"", String::from_utf16_lossy(title)))
+    pub fn short_desc(&self) -> &SizedCStringUtf16<0x40> { &self.short_desc }
+    pub fn long_desc(&self) -> &SizedCStringUtf16<0x80> { &self.long_desc }
+    pub fn publisher(&self) -> &SizedCStringUtf16<0x40> { &self.publisher }
 }
 
 #[derive(Clone)]

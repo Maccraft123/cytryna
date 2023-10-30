@@ -3,6 +3,7 @@ mod cia;
 mod titleid;
 mod tmd;
 mod smdh;
+mod string;
 
 use ncch::Ncch;
 use cia::Cia;

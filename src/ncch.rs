@@ -1,6 +1,8 @@
 use std::os::raw::c_char;
 use std::mem;
 
+use crate::string::SizedCString;
+
 use bitflags::bitflags;
 use derivative::Derivative;
 use static_assertions::assert_eq_size;
@@ -23,7 +25,7 @@ pub struct NcchHeader {
     program_id: u64,
     #[derivative(Debug="ignore")] _reserved0: [u8; 0x10],
     logo_region_hash: [u8; 0x20],
-    product_code: [c_char; 0x10],
+    product_code: SizedCString<0x10>,
     exheader_hash: [u8; 0x20],
     exheader_size: u32,
     #[derivative(Debug="ignore")] _reserved1: u32,
@@ -171,7 +173,7 @@ impl ExeFsHeader {
         let mut name = name.to_vec();
         name.resize(0x8, b'\0');
         for hdr in self.file_headers_used() {
-            if name == hdr.name {
+            if name == hdr.name.data() {
                 return Some(hdr);
             }
         }
@@ -183,7 +185,7 @@ impl ExeFsHeader {
 #[derive(Clone)]
 #[repr(C)]
 pub struct FileHeader {
-    name: [u8; 0x8],
+    name: SizedCString<0x8>,
     offset: u32,
     size: u32,
 }
@@ -191,6 +193,6 @@ assert_eq_size!([u8; 16], FileHeader);
 
 impl FileHeader {
     fn is_unused(&self) -> bool {
-        self.name == [0; 0x8] && self.offset == 0 && self.size == 0
+        !self.name.is_zero() && self.offset == 0 && self.size == 0
     }
 }
