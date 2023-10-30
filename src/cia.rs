@@ -3,7 +3,7 @@ use std::mem;
 use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
-use crate::titleid::TitleId;
+use crate::titleid::{TitleId, MaybeTitleId};
 use crate::tmd::Tmd;
 use crate::smdh::Smdh;
 
@@ -98,7 +98,7 @@ impl Cia {
 
 #[repr(C)]
 pub struct MetaRegion {
-    dependencies: [TitleId; 0x30],
+    dependencies: [MaybeTitleId; 0x30],
     _reserved0: [u8; 0x180],
     core_version: u32,
     _reserved1: [u8; 0xfc],
@@ -107,11 +107,11 @@ pub struct MetaRegion {
 assert_eq_size!([u8; 0x3ac0], MetaRegion);
 
 impl MetaRegion {
-    pub fn dependencies(&self) -> [TitleId; 0x30] { self.dependencies }
+    pub fn dependencies(&self) -> [MaybeTitleId; 0x30] { self.dependencies }
     pub fn dependencies_iter(&self) -> impl Iterator<Item = TitleId> {
         let copy = self.dependencies;
         copy.into_iter()
-            .filter(|v| !v.is_null())
+            .filter_map(|v| v.to_titleid())
     }
     pub fn icon(&self) -> Option<&Smdh> {
         Smdh::from_slice(&self.icon)

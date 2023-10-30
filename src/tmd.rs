@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::titleid::TitleIdBigEndian;
+use crate::titleid::MaybeTitleIdBe;
 
 use derivative::Derivative;
 use redox_simple_endian::*;
@@ -17,7 +17,7 @@ pub struct TmdInner<S: Signature> {
     signer_crl_version: u8,
     #[derivative(Debug="ignore")] _reserved0: u8,
     system_vresion: u64,
-    title_id: TitleIdBigEndian, // what the fuck
+    title_id: MaybeTitleIdBe,
     group_id: u16be,
     save_data_size: u32,
     srl_private_save_size: u32,

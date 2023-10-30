@@ -2,10 +2,30 @@ use std::{fmt, mem};
 
 use bitflags::bitflags;
 use static_assertions::assert_eq_size;
-use redox_simple_endian::u32be;
+use redox_simple_endian::{u64be, u32be};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-#[repr(C)]
+#[repr(transparent)]
+pub struct MaybeTitleId(u64);
+
+impl MaybeTitleId {
+    pub fn to_titleid(self) -> Option<TitleId> {
+        TitleId::from_u64(self.0)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+#[repr(transparent)]
+pub struct MaybeTitleIdBe(u64);
+
+impl MaybeTitleIdBe {
+    pub fn to_titleid(self) -> Option<TitleId> {
+        TitleId::from_u64(self.0.swap_bytes())
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+#[repr(C, align(8))]
 pub struct TitleId {
     id: u32,
     category: Category,
@@ -20,30 +40,21 @@ impl TitleId {
     pub fn to_u64(self) -> u64 {
         unsafe { mem::transmute(self) }
     }
-}
+    pub fn from_u64(what: u64) -> Option<TitleId> {
+        let platform = (what & 0x0000_0000_0000_ffff) as u16;
+        println!("{:x} ", platform);
 
-// see crate::tmd::TmdInner for reason to exist...
-#[derive(Copy, Clone, PartialEq)]
-#[repr(C)]
-pub struct TitleIdBigEndian(u64);
-
-impl From<TitleIdBigEndian> for TitleId {
-    fn from(other: TitleIdBigEndian) -> TitleId {
-        unsafe { mem::transmute(other.0.swap_bytes()) }
-    }
-}
-
-impl fmt::Debug for TitleIdBigEndian {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let tid: TitleId = (*self).into();
-        tid.fmt(f)
+        if platform > 0 && platform < 6 {
+            Some(unsafe { mem::transmute(what) })
+        } else {
+            None
+        }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u16)]
 pub enum Platform {
-    Invalid = 0, // placeholder for debug derive to not shit itself when titleid is 0
     Wii = 1,
     Dsi = 3,
     Ctr = 4,
