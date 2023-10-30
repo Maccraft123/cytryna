@@ -92,6 +92,9 @@ pub struct Ncch {
 impl Ncch {
     // TODO: Result<Self, BikeshednameError>
    pub  fn from_slice(what: &[u8]) -> &Self {
+        let alignment = mem::align_of::<NcchHeader>();
+        assert_eq!(0, what.as_ptr().align_offset(alignment));
+
         let me: &Ncch = unsafe { mem::transmute(what) };
         if &me.header.magic != b"NCCH" {
             panic!("wrong magic");
@@ -115,7 +118,14 @@ impl Ncch {
     }
     pub fn exefs(&self) -> Option<&ExeFs> {
         unsafe {
-            self.exefs_region().map(|v| mem::transmute(v))
+            if let Some(reg) = self.exefs_region() {
+                let alignment = mem::align_of::<ExeFsHeader>();
+                assert_eq!(0, reg.as_ptr().align_offset(alignment));
+
+                Some(mem::transmute(reg))
+            } else {
+                None
+            }
         }
     }
     pub fn romfs_region(&self) -> Option<&[u8]> {

@@ -33,8 +33,18 @@ pub struct EulaVersion {
 }
 
 impl Smdh {
-    pub fn looks_ok(&self) -> bool {
-        self.magic == *b"SMDH"
+    pub fn is_slice_valid_smdh(slice: &[u8]) -> bool {
+        slice.len() > mem::size_of::<Smdh>() &&
+        [slice[0], slice[1], slice[2], slice[3]] == *b"SMDH"
+    }
+    pub fn from_slice(what: &[u8]) -> Option<&Self> {
+        if Self::is_slice_valid_smdh(what) {
+            let alignment = mem::align_of::<Smdh>();
+            assert_eq!(0, what.as_ptr().align_offset(alignment));
+            Some(unsafe { mem::transmute(what.as_ptr()) })
+        } else {
+            None
+        }
     }
     pub fn title(&self, lang: Language) -> &SmdhTitle { &self.titles[lang as usize] }
     pub fn age_rating(&self, region: AgeRatingRegion) -> AgeRating { self.age_ratings[region as usize] }

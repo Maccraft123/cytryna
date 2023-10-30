@@ -50,6 +50,9 @@ impl Cia {
         align(mem::size_of::<CiaHeader>() as u32) - mem::size_of::<CiaHeader>()
     }
     pub fn from_slice(what: &[u8]) -> &Self {
+        let alignment = mem::align_of::<CiaHeader>();
+        assert_eq!(0, what.as_ptr().align_offset(alignment));
+
         let me: &Cia = unsafe { mem::transmute(what) };
         assert!(me.looks_ok());
         me
@@ -99,7 +102,7 @@ pub struct MetaRegion {
     _reserved0: [u8; 0x180],
     core_version: u32,
     _reserved1: [u8; 0xfc],
-    icon: Smdh,
+    icon: [u8; mem::size_of::<Smdh>()],
 }
 assert_eq_size!([u8; 0x3ac0], MetaRegion);
 
@@ -110,8 +113,7 @@ impl MetaRegion {
         copy.into_iter()
             .filter(|v| !v.is_null())
     }
-    pub fn icon(&self) -> &Smdh {
-        assert!(self.icon.looks_ok());
-        &self.icon
+    pub fn icon(&self) -> Option<&Smdh> {
+        Smdh::from_slice(&self.icon)
     }
 }

@@ -43,7 +43,7 @@ pub enum Tmd<'t> {
 
 impl Tmd<'_> {
     pub fn from_bytes(bytes: &[u8]) -> Option<Tmd> {
-        // safe because i said so
+        // NOTE: alignment of TmdInner HAS TO BE 1
         unsafe {
             let sig_ty = (bytes[0], bytes[1], bytes[2], bytes[3]);
             match sig_ty {
