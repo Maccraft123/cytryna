@@ -34,7 +34,7 @@ pub struct EulaVersion {
 
 impl Smdh {
     pub fn is_slice_valid_smdh(slice: &[u8]) -> bool {
-        slice.len() > mem::size_of::<Smdh>() &&
+        slice.len() >= mem::size_of::<Smdh>() &&
         [slice[0], slice[1], slice[2], slice[3]] == *b"SMDH"
     }
     pub fn from_slice(what: &[u8]) -> Option<&Self> {
