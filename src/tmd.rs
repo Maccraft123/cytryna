@@ -1,6 +1,7 @@
 use std::mem;
 
 use crate::titleid::MaybeTitleIdBe;
+use crate::ticket::{Signature, Rsa4096Sha256, Rsa2048Sha256, EcdsaSha256};
 
 use derivative::Derivative;
 use redox_simple_endian::*;
@@ -55,31 +56,3 @@ impl Tmd<'_> {
         }
     }
 }
-
-pub trait Signature: Sealed {}
-trait Sealed {}
-
-#[repr(C, packed)]
-pub struct Rsa4096Sha256 {
-    sig: [u8; 0x200],
-    pad: [u8; 0x3c],
-}
-impl Sealed for Rsa4096Sha256 {}
-impl Signature for Rsa4096Sha256 {}
-
-#[repr(C, packed)]
-pub struct Rsa2048Sha256 {
-    sig: [u8; 0x100],
-    pad: [u8; 0x3c],
-}
-impl Sealed for Rsa2048Sha256 {}
-impl Signature for Rsa2048Sha256 {}
-
-#[repr(C, packed)]
-pub struct EcdsaSha256 {
-    sig: [u8; 0x3c],
-    pad: [u8; 0x40],
-}
-impl Sealed for EcdsaSha256 {}
-impl Signature for EcdsaSha256 {}
-

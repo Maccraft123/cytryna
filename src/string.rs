@@ -1,20 +1,18 @@
 use std::{fmt, string, str, mem, borrow::Cow};
 
 #[derive(Clone)]
-#[repr(C)]
-pub struct SizedCString<const SIZE: usize> {
-    data: [u8; SIZE]
-}
+#[repr(transparent)]
+pub struct SizedCString<const SIZE: usize>([u8; SIZE]);
 
 impl<const SIZE: usize> SizedCString<SIZE> {
     pub fn as_str(&self) -> Result<&str, str::Utf8Error> {
-        str::from_utf8(&self.data)
+        str::from_utf8(&self.0)
     }
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
-        String::from_utf8_lossy(&self.data)
+        String::from_utf8_lossy(&self.0)
     }
-    pub fn is_zero(&self) -> bool { self.data.iter().all(|v| *v == 0) }
-    pub fn data(&self) -> &[u8] { &self.data }
+    pub fn is_zero(&self) -> bool { self.0.iter().all(|v| *v == 0) }
+    pub fn data(&self) -> &[u8] { &self.0 }
 }
 
 #[derive(Clone)]

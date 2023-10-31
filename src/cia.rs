@@ -4,6 +4,7 @@ use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
 use crate::titleid::{TitleId, MaybeTitleId};
+use crate::ticket::Ticket;
 use crate::tmd::Tmd;
 use crate::smdh::Smdh;
 
@@ -61,9 +62,9 @@ impl Cia {
     pub fn cert_chain_region(&self) -> &[u8] {
         &self.data[Self::hdr_offset()..][..align(self.header.cert_size)]
     }
-    pub fn ticket_region(&self) -> &[u8] {
+    pub fn ticket_region(&self) -> Option<Ticket> {
         let offset = Self::hdr_offset() + align(self.header.cert_size);
-        &self.data[offset..][..align(self.header.ticket_size)]
+        Ticket::from_bytes(&self.data[offset..][..align(self.header.ticket_size)])
     }
     pub fn tmd_region(&self) -> Option<Tmd> {
         let offset =

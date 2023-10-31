@@ -6,26 +6,33 @@ use redox_simple_endian::{u64be, u32be};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(transparent)]
-pub struct MaybeTitleId(u64);
+pub struct MaybeTitleId {
+    raw: u64,
+}
 
 impl MaybeTitleId {
     pub fn to_titleid(self) -> Option<TitleId> {
-        TitleId::from_u64(self.0)
+        TitleId::from_u64(self.raw)
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(transparent)]
-pub struct MaybeTitleIdBe(u64);
+pub struct MaybeTitleIdBe {
+    raw: u64,
+}
 
 impl MaybeTitleIdBe {
     pub fn to_titleid(self) -> Option<TitleId> {
-        TitleId::from_u64(self.0.swap_bytes())
+        TitleId::from_u64(self.raw.swap_bytes())
+    }
+    pub fn to_le(self) -> MaybeTitleId {
+        MaybeTitleId { raw: self.raw.swap_bytes() }
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-#[repr(C, align(8))]
+#[repr(C)]
 pub struct TitleId {
     id: u32,
     category: Category,
@@ -50,6 +57,9 @@ impl TitleId {
             None
         }
     }
+    pub fn id(&self) -> u32 { self.id }
+    pub fn category(&self) -> Category { self.category }
+    pub fn plat(&self) -> Platform { self.plat }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
