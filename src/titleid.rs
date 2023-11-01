@@ -29,6 +29,11 @@ impl MaybeTitleIdBe {
     pub fn to_le(self) -> MaybeTitleId {
         MaybeTitleId { raw: self.raw.swap_bytes() }
     }
+    pub fn to_bytes(self) -> [u8; 8] {
+        unsafe {
+            mem::transmute(self)
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]

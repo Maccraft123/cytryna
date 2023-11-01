@@ -2,6 +2,9 @@ use std::mem;
 
 use crate::titleid::MaybeTitleIdBe;
 use crate::string::SizedCString;
+use crate::crypto::{KeyIndex, KeyBag, Aes128CbcDec};
+use aes::cipher::block_padding::NoPadding;
+use cbc::cipher::{KeyIvInit, BlockDecryptMut};
 
 use derivative::Derivative;
 use redox_simple_endian::*;
@@ -10,10 +13,8 @@ use static_assertions::assert_eq_size;
 #[repr(C, packed)]
 pub struct TicketInner<S: Signature> {
     sig_type: u32be,
-    //#[derivative(Debug="ignore")]
     sig: S,
     data: TicketData,
-    //#[derivative(Debug="ignore")]
     content_index: [u8],
 }
 
@@ -70,6 +71,18 @@ impl Ticket<'_> {
             Self::Rsa2048Sha256(t) => &t.data,
             Self::EcdsaSha256(t) => &t.data,
         }
+    }
+    pub fn title_key(&self) -> Option<[u8; 0x10]> {
+        let mut iv = [0u8; 0x10];
+        iv[..0x8].copy_from_slice(&self.data().title_id.to_bytes());
+
+        let mut title_key = self.data().title_key;
+        let idx = self.data().key_index;
+        let key = KeyBag::global()?.get_key(KeyIndex::CommonN(idx))?;
+
+        Aes128CbcDec::new(key.into(), &iv.into())
+            .decrypt_padded_mut::<NoPadding>(&mut title_key).ok()?;
+        Some(title_key)
     }
     pub fn issuer(&self) -> &SizedCString<0x40> { &self.data().issuer }
     pub fn title_key_raw(&self) -> &[u8; 0x10] { &self.data().title_key }
