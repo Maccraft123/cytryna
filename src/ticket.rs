@@ -2,7 +2,8 @@ use std::mem;
 
 use crate::titleid::MaybeTitleIdBe;
 use crate::string::SizedCString;
-use crate::crypto::{KeyIndex, KeyBag, Aes128CbcDec};
+use crate::crypto::{KeyIndex, KeyBag, Aes128CbcDec, SignedData, FromBytes};
+
 use aes::cipher::block_padding::NoPadding;
 use cbc::cipher::{KeyIvInit, BlockDecryptMut};
 
@@ -10,19 +11,10 @@ use derivative::Derivative;
 use redox_simple_endian::*;
 use static_assertions::assert_eq_size;
 
-#[repr(C, packed)]
-pub struct TicketInner<S: Signature> {
-    sig_type: u32be,
-    sig: S,
-    data: TicketData,
-    content_index: [u8],
-}
-
 #[derive(Derivative)]
 #[derivative(Debug)]
 #[repr(C, packed)]
-pub struct TicketData {
-    #[derivative(Debug="ignore")] issuer: SizedCString<0x40>,
+pub struct TicketInner {
     ecc_pubkey: [u8; 0x3c],
     version: u8,
     ca_crl_version: u8,
@@ -43,35 +35,22 @@ pub struct TicketData {
     audit: u8,
     #[derivative(Debug="ignore")] _reserved5: [u8; 0x42],
     limits: [u8; 0x40],
+    #[derivative(Debug="ignore")]
+    content_index: [u8],
 }
-assert_eq_size!([u8; 0x164], TicketData);
 
-pub enum Ticket<'t> {
-    Rsa4096Sha256(&'t TicketInner<Rsa4096Sha256>),
-    Rsa2048Sha256(&'t TicketInner<Rsa2048Sha256>),
-    EcdsaSha256(&'t TicketInner<EcdsaSha256>),
+impl FromBytes for TicketInner {
+    fn bytes_ok(_: &[u8]) -> bool {
+        true
+    }
+    fn cast(bytes: &[u8]) -> &Self {
+        unsafe { mem::transmute(bytes) }
+    }
 }
+
+pub type Ticket<'a> = SignedData<'a, TicketInner>;
 
 impl Ticket<'_> {
-    pub fn from_bytes(bytes: &[u8]) -> Option<Ticket> {
-        // NOTE: alignment of TicketInner HAS TO BE 1
-        unsafe {
-            let sig_ty = (bytes[0], bytes[1], bytes[2], bytes[3]);
-            match sig_ty {
-                (0x00, 0x01, 0x00, 0x03) => Some(Ticket::Rsa4096Sha256(mem::transmute(bytes))),
-                (0x00, 0x01, 0x00, 0x04) => Some(Ticket::Rsa2048Sha256(mem::transmute(bytes))),
-                (0x00, 0x01, 0x00, 0x05) => Some(Ticket::EcdsaSha256(mem::transmute(bytes))),
-                _ => None,
-            }
-        }
-    }
-    pub fn data(&self) -> &TicketData {
-        match self {
-            Self::Rsa4096Sha256(t) => &t.data,
-            Self::Rsa2048Sha256(t) => &t.data,
-            Self::EcdsaSha256(t) => &t.data,
-        }
-    }
     pub fn title_key(&self) -> Option<[u8; 0x10]> {
         let mut iv = [0u8; 0x10];
         iv[..0x8].copy_from_slice(&self.data().title_id.to_bytes());
@@ -84,7 +63,6 @@ impl Ticket<'_> {
             .decrypt_padded_mut::<NoPadding>(&mut title_key).ok()?;
         Some(title_key)
     }
-    pub fn issuer(&self) -> &SizedCString<0x40> { &self.data().issuer }
     pub fn title_key_raw(&self) -> &[u8; 0x10] { &self.data().title_key }
     pub fn key_index(&self) -> u8 { self.data().key_index }
 }

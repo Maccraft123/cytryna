@@ -1,58 +1,110 @@
-use std::mem;
+use std::{fmt, mem};
 
+use crate::crypto::{FromBytes, SignedData};
+use crate::ticket::{EcdsaSha256, Rsa2048Sha256, Rsa4096Sha256, Signature};
 use crate::titleid::MaybeTitleIdBe;
-use crate::ticket::{Signature, Rsa4096Sha256, Rsa2048Sha256, EcdsaSha256};
 
+use bitflags::bitflags;
 use derivative::Derivative;
 use redox_simple_endian::*;
+use static_assertions::assert_eq_size;
 
 #[derive(Derivative)]
 #[derivative(Debug)]
-#[repr(C, packed)]
-pub struct TmdInner<S: Signature> {
-    sig_type: u32be,
-    #[derivative(Debug="ignore")] sig: S, // includes padding
-    sig_issuer: [u8; 0x40],
+#[repr(C, packed)] // TODO: remove packing and copy from fields
+pub struct TmdInner {
     version: u8,
     ca_crl_version: u8,
     signer_crl_version: u8,
-    #[derivative(Debug="ignore")] _reserved0: u8,
-    system_vresion: u64,
+    #[derivative(Debug = "ignore")]
+    _reserved0: u8,
+    system_version: u64be,
     title_id: MaybeTitleIdBe,
+    title_type: u32be,
     group_id: u16be,
-    save_data_size: u32,
-    srl_private_save_size: u32,
-    #[derivative(Debug="ignore")] _reserved1: u32,
+    save_data_size: u32be,
+    srl_private_save_size: u32be,
+    #[derivative(Debug = "ignore")]
+    _reserved1: u32,
     srl_flag: u8,
-    #[derivative(Debug="ignore")] _reserved2: [u8; 0x31],
+    #[derivative(Debug = "ignore")]
+    _reserved2: [u8; 0x31],
     access_rights: u32be,
     title_version: u16be,
     content_count: u16be,
     boot_content: u16be,
-    #[derivative(Debug="ignore")] _padding: u16,
+    #[derivative(Debug = "ignore")]
+    _padding: u16,
     hash: [u8; 0x20],
-    #[derivative(Debug="ignore")] content_info_records: [u8; 0x24*60],
-    #[derivative(Debug="ignore")] content_chunk_records: [u8],
+    content_info_records: [ContentInfo; 64],
+    #[derivative(Debug = "ignore")]
+    content_chunk_records: [ContentChunk],
 }
 
-#[derive(Debug, Clone)]
-pub enum Tmd<'t> {
-    Rsa4096Sha256(&'t TmdInner<Rsa4096Sha256>),
-    Rsa2048Sha256(&'t TmdInner<Rsa2048Sha256>),
-    EcdsaSha256(&'t TmdInner<EcdsaSha256>),
+impl FromBytes for TmdInner {
+    fn bytes_ok(_: &[u8]) -> bool {
+        true
+    }
+    fn cast(bytes: &[u8]) -> &Self {
+        unsafe { mem::transmute(bytes) }
+    }
 }
 
-impl Tmd<'_> {
-    pub fn from_bytes(bytes: &[u8]) -> Option<Tmd> {
-        // NOTE: alignment of TmdInner HAS TO BE 1
-        unsafe {
-            let sig_ty = (bytes[0], bytes[1], bytes[2], bytes[3]);
-            match sig_ty {
-                (0x00, 0x01, 0x00, 0x03) => Some(Tmd::Rsa4096Sha256(mem::transmute(bytes))),
-                (0x00, 0x01, 0x00, 0x04) => Some(Tmd::Rsa2048Sha256(mem::transmute(bytes))),
-                (0x00, 0x01, 0x00, 0x05) => Some(Tmd::EcdsaSha256(mem::transmute(bytes))),
-                _ => None,
-            }
+pub type Tmd<'a> = SignedData<'a, TmdInner>;
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ContentChunk {
+    id: u32be,
+    idx: u16be,
+    ty: u16be,
+    size: u64be,
+    hash: [u8; 0x20]
+}
+assert_eq_size!([u8; 0x30], ContentChunk);
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ContentInfo {
+    idx: ContentIndex,
+    cmd_count: u16be,
+    hash: [u8; 0x20],
+}
+assert_eq_size!([u8; 0x24], ContentInfo);
+
+impl fmt::Debug for ContentInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.cmd_count.to_native() != 0
+            || self.hash.iter().any(|v| *v != 0)
+        {
+            f.debug_struct("ContentInfo")
+                .field("idx", &self.idx)
+                .field("cmd_count", &self.cmd_count)
+                .field("hash", &self.hash)
+                .finish()
+        } else {
+            f.debug_tuple("ContentInfo")
+                .field(&None::<()>)
+                .finish()
         }
     }
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy)]
+    pub struct ContentTypeFlag: u16 {
+        const ENCRYPTED = 0x1;
+        const DISC = 0x2;
+        const CFM = 0x4;
+        const OPTIONAL = 0x4000;
+        const SHARED = 0x8000;
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(u16)]
+pub enum ContentIndex {
+    Main = 0,
+    Manual = 1,
+    Dlp = 2,
 }
