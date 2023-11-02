@@ -1,5 +1,5 @@
-use std::os::raw::c_char;
 use std::mem;
+use std::os::raw::c_char;
 
 use crate::string::SizedCString;
 use crate::{CytrynaError, Result};
@@ -18,18 +18,21 @@ use static_assertions::assert_eq_size;
 pub struct NcchHeader {
     sig: [u8; 0x100],
     magic: [u8; 4],
-    #[derivative(Debug="ignore")] content_size: u32,
+    #[derivative(Debug = "ignore")]
+    content_size: u32,
     partition_id: u64,
     maker_code: [c_char; 2],
     version: u16,
     content_lock_seed_hash: u32,
     program_id: u64,
-    #[derivative(Debug="ignore")] _reserved0: [u8; 0x10],
+    #[derivative(Debug = "ignore")]
+    _reserved0: [u8; 0x10],
     logo_region_hash: [u8; 0x20],
     product_code: SizedCString<0x10>,
     exheader_hash: [u8; 0x20],
     exheader_size: u32,
-    #[derivative(Debug="ignore")] _reserved1: u32,
+    #[derivative(Debug = "ignore")]
+    _reserved1: u32,
     flags: NcchFlags,
     plain_offset: u32,
     plain_size: u32,
@@ -38,11 +41,13 @@ pub struct NcchHeader {
     exefs_offset: u32,
     exefs_size: u32,
     exefs_hash_size: u32,
-    #[derivative(Debug="ignore")] _reserved2: u32,
+    #[derivative(Debug = "ignore")]
+    _reserved2: u32,
     romfs_offset: u32,
     romfs_size: u32,
     romfs_hash_size: u32,
-    #[derivative(Debug="ignore")] _reserved3: u32,
+    #[derivative(Debug = "ignore")]
+    _reserved3: u32,
     exefs_super_hash: [u8; 0x20],
     romfs_super_hash: [u8; 0x20],
 }
@@ -58,7 +63,7 @@ pub struct NcchFlags {
     content_platform: u8,
     content_type: ContentType,
     content_unit_size: u8,
-    options: NcchFlagsOptions
+    options: NcchFlagsOptions,
 }
 assert_eq_size!([u8; 0x8], NcchFlags);
 
@@ -89,12 +94,14 @@ pub struct Ncch {
     data: [u8],
 }
 
-// TODO: 
+// TODO:
 // - modification of data inside of it?
 // - encryption and decryption
 impl Ncch {
-    pub fn header(&self) -> &NcchHeader { &self.header }
-   pub  fn from_slice(what: &[u8]) -> Result<&Self> {
+    pub fn header(&self) -> &NcchHeader {
+        &self.header
+    }
+    pub fn from_slice(what: &[u8]) -> Result<&Self> {
         let alignment = mem::align_of::<NcchHeader>();
         assert_eq!(0, what.as_ptr().align_offset(alignment));
 
@@ -107,7 +114,7 @@ impl Ncch {
     // TODO: when are regions absent?
     fn region(&self, offset: u32, size: u32) -> Result<&[u8]> {
         if offset == 0 || size == 0 {
-            return Err(CytrynaError::MissingRegion)
+            return Err(CytrynaError::MissingRegion);
         }
 
         let offset = offset as usize * 0x200 - mem::size_of::<NcchHeader>();
@@ -135,7 +142,9 @@ impl Ncch {
     pub fn romfs_region(&self) -> Result<&[u8]> {
         self.region(self.header.romfs_offset, self.header.romfs_size)
     }
-    pub fn flags(&self) -> &NcchFlags { &self.header.flags }
+    pub fn flags(&self) -> &NcchFlags {
+        &self.header.flags
+    }
 }
 
 #[repr(C)]
@@ -165,8 +174,7 @@ assert_eq_size!([u8; 0x200], ExeFsHeader);
 
 impl ExeFsHeader {
     pub fn file_headers_used(&self) -> impl Iterator<Item = &FileHeader> {
-        self.file_headers.iter()
-            .filter(|hdr| !hdr.is_unused())
+        self.file_headers.iter().filter(|hdr| !hdr.is_unused())
     }
     pub fn file_header_by_name<'a>(&'a self, name: &[u8]) -> Option<&'a FileHeader> {
         if name.len() > 0x8 {

@@ -11,20 +11,25 @@ use static_assertions::assert_eq_size;
 #[derivative(Debug)]
 #[repr(C)]
 pub struct Smdh {
-    #[derivative(Debug="ignore")] magic: [u8; 4],
+    #[derivative(Debug = "ignore")]
+    magic: [u8; 4],
     version: u16,
-    #[derivative(Debug="ignore")] _reserved0: u16,
+    #[derivative(Debug = "ignore")]
+    _reserved0: u16,
     titles: [SmdhTitle; 0x10],
     age_ratings: [AgeRating; 0x10],
     region_lockout: RegionLockout,
     matchmaker_id: MatchmakerId,
     flags: SmdhFlags,
     eula_version: EulaVersion,
-    #[derivative(Debug="ignore")] _reserved1: u16,
+    #[derivative(Debug = "ignore")]
+    _reserved1: u16,
     optimal_animation_default_frame: f32,
     cec_id: u32,
-    #[derivative(Debug="ignore")] _reserved2: u64,
-    #[derivative(Debug="ignore")] icon: SmdhIcon,
+    #[derivative(Debug = "ignore")]
+    _reserved2: u64,
+    #[derivative(Debug = "ignore")]
+    icon: SmdhIcon,
 }
 assert_eq_size!([u8; 0x36c0], Smdh);
 
@@ -38,24 +43,40 @@ pub struct EulaVersion {
 impl Smdh {
     pub fn from_slice(slice: &[u8]) -> Result<&Self> {
         if slice.len() < mem::size_of::<Smdh>() {
-            return Err(CytrynaError::SliceTooSmall)
+            return Err(CytrynaError::SliceTooSmall);
         }
 
         if [slice[0], slice[1], slice[2], slice[3]] != *b"SMDH" {
-            return Err(CytrynaError::InvalidMagic)
+            return Err(CytrynaError::InvalidMagic);
         }
 
         assert_eq!(0, slice.as_ptr().align_offset(mem::align_of::<Smdh>()));
         Ok(unsafe { mem::transmute(slice.as_ptr()) })
     }
-    pub fn title(&self, lang: Language) -> &SmdhTitle { &self.titles[lang as usize] }
-    pub fn age_rating(&self, region: AgeRatingRegion) -> AgeRating { self.age_ratings[region as usize] }
-    pub fn region_lockout(&self) -> RegionLockout { self.region_lockout }
-    pub fn matchmaker_id(&self) -> &MatchmakerId { &self.matchmaker_id }
-    pub fn flags(&self) -> SmdhFlags { self.flags }
-    pub fn eula_version(&self) -> &EulaVersion { &self.eula_version }
-    pub fn optimal_animation_default_frame(&self) -> f32 { self.optimal_animation_default_frame }
-    pub fn cec_id(&self) -> u32 { self.cec_id }
+    pub fn title(&self, lang: Language) -> &SmdhTitle {
+        &self.titles[lang as usize]
+    }
+    pub fn age_rating(&self, region: AgeRatingRegion) -> AgeRating {
+        self.age_ratings[region as usize]
+    }
+    pub fn region_lockout(&self) -> RegionLockout {
+        self.region_lockout
+    }
+    pub fn matchmaker_id(&self) -> &MatchmakerId {
+        &self.matchmaker_id
+    }
+    pub fn flags(&self) -> SmdhFlags {
+        self.flags
+    }
+    pub fn eula_version(&self) -> &EulaVersion {
+        &self.eula_version
+    }
+    pub fn optimal_animation_default_frame(&self) -> f32 {
+        self.optimal_animation_default_frame
+    }
+    pub fn cec_id(&self) -> u32 {
+        self.cec_id
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -120,8 +141,12 @@ pub struct MatchmakerId {
 assert_eq_size!([u8; 0xc], MatchmakerId);
 
 impl MatchmakerId {
-    pub fn id(&self) -> u32 { self.id }
-    pub fn bit_id(&self) -> u64 { self.bit_id}
+    pub fn id(&self) -> u32 {
+        self.id
+    }
+    pub fn bit_id(&self) -> u64 {
+        self.bit_id
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -151,9 +176,15 @@ pub struct SmdhTitle {
 assert_eq_size!([u8; 0x200], SmdhTitle);
 
 impl SmdhTitle {
-    pub fn short_desc(&self) -> &SizedCStringUtf16<0x40> { &self.short_desc }
-    pub fn long_desc(&self) -> &SizedCStringUtf16<0x80> { &self.long_desc }
-    pub fn publisher(&self) -> &SizedCStringUtf16<0x40> { &self.publisher }
+    pub fn short_desc(&self) -> &SizedCStringUtf16<0x40> {
+        &self.short_desc
+    }
+    pub fn long_desc(&self) -> &SizedCStringUtf16<0x80> {
+        &self.long_desc
+    }
+    pub fn publisher(&self) -> &SizedCStringUtf16<0x40> {
+        &self.publisher
+    }
 }
 
 #[derive(Clone)]
@@ -215,7 +246,7 @@ impl<const SIZE: usize> IconData<SIZE> {
 #[cfg(feature = "embedded_graphics")]
 impl<const SIZE: usize> ImageDrawable for IconData<SIZE> {
     type Color = Rgb565;
-    
+
     fn draw<D>(&self, target: &mut D) -> Result<(), D::Error>
         where D: DrawTarget<Color = Self::Color>
     {

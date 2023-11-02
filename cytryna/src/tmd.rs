@@ -1,4 +1,4 @@
-use std::{fmt, mem, slice, ptr};
+use std::{fmt, mem, ptr, slice};
 
 use crate::crypto::{FromBytes, SignedData};
 use crate::titleid::{MaybeTitleIdBe, TitleId};
@@ -54,17 +54,22 @@ impl FromBytes for TmdInner {
 pub type Tmd<'a> = SignedData<'a, TmdInner>;
 
 impl<'a> Tmd<'a> {
-    pub fn title_id(&self) -> Result<TitleId> { self.data().title_id.to_titleid() }
-    pub fn content_count(&self) -> u16 { self.data().content_count.into() }
+    pub fn title_id(&self) -> Result<TitleId> {
+        self.data().title_id.to_titleid()
+    }
+    pub fn content_count(&self) -> u16 {
+        self.data().content_count.into()
+    }
 
     pub fn content_chunks(&self) -> &[ContentChunk] {
         let ptr = ptr::addr_of!(self.data().content_chunk_records);
         let amount = self.content_count();
-        assert_eq!(ptr as *const u8 as usize % mem::align_of::<ContentChunk>(), 0);
+        assert_eq!(
+            ptr as *const u8 as usize % mem::align_of::<ContentChunk>(),
+            0
+        );
 
-        unsafe {
-            slice::from_raw_parts(ptr as *const ContentChunk, amount as usize)
-        }
+        unsafe { slice::from_raw_parts(ptr as *const ContentChunk, amount as usize) }
     }
 }
 
@@ -84,16 +89,26 @@ pub struct ContentChunk {
     idx: ContentIndex,
     ty: u16be,
     size: [u8; 8], // actually u64be
-    hash: [u8; 0x20]
+    hash: [u8; 0x20],
 }
 assert_eq_size!([u8; 0x30], ContentChunk);
 
 impl ContentChunk {
-    pub fn id(&self) -> u32 { self.id.to_native() }
-    pub fn idx(&self) -> ContentIndex { self.idx }
-    pub fn ty(&self) -> ContentType { ContentType::from_bits_retain(self.ty.to_native()) }
-    pub fn size(&self) -> u64 { u64::from_be_bytes(self.size) }
-    pub fn hash(&self) -> &[u8; 0x20] { &self.hash }
+    pub fn id(&self) -> u32 {
+        self.id.to_native()
+    }
+    pub fn idx(&self) -> ContentIndex {
+        self.idx
+    }
+    pub fn ty(&self) -> ContentType {
+        ContentType::from_bits_retain(self.ty.to_native())
+    }
+    pub fn size(&self) -> u64 {
+        u64::from_be_bytes(self.size)
+    }
+    pub fn hash(&self) -> &[u8; 0x20] {
+        &self.hash
+    }
     pub fn is_nil(&self) -> bool {
         self.ty.to_native() == 0 && self.size == [0; 8] && self.hash.iter().all(|v| *v == 0)
     }
@@ -111,18 +126,14 @@ assert_eq_size!([u8; 0x24], ContentInfo);
 
 impl fmt::Debug for ContentInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.cmd_count.to_native() != 0
-            || self.hash.iter().any(|v| *v != 0)
-        {
+        if self.cmd_count.to_native() != 0 || self.hash.iter().any(|v| *v != 0) {
             f.debug_struct("ContentInfo")
                 .field("idx", &self.idx)
                 .field("cmd_count", &self.cmd_count)
                 .field("hash", &self.hash)
                 .finish()
         } else {
-            f.debug_tuple("ContentInfo")
-                .field(&None::<()>)
-                .finish()
+            f.debug_tuple("ContentInfo").field(&None::<()>).finish()
         }
     }
 }

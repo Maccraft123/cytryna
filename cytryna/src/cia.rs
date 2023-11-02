@@ -4,10 +4,10 @@ use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
 use crate::crypto::aes128_ctr::*;
-use crate::titleid::{TitleId, MaybeTitleId};
-use crate::ticket::Ticket;
-use crate::tmd::{self, ContentIndex, Tmd};
 use crate::smdh::Smdh;
+use crate::ticket::Ticket;
+use crate::titleid::{MaybeTitleId, TitleId};
+use crate::tmd::{self, ContentIndex, Tmd};
 use crate::{CytrynaError, Result};
 
 fn align(what: u32) -> usize {
@@ -30,7 +30,8 @@ pub struct CiaHeader {
     tmd_size: u32,
     meta_size: u32,
     content_size: u64,
-    #[derivative(Debug = "ignore")] content_index: [u8; 0x2000],
+    #[derivative(Debug = "ignore")]
+    content_index: [u8; 0x2000],
 }
 assert_eq_size!([u8; 0x2020], CiaHeader);
 
@@ -113,7 +114,7 @@ impl Cia {
 
 pub struct ContentRegion<'a> {
     data: ContentData<'a>,
-    idx: ContentIndex
+    idx: ContentIndex,
 }
 
 impl ContentRegion<'_> {
@@ -123,7 +124,9 @@ impl ContentRegion<'_> {
             ContentData::Unencrypted(slice) => slice,
         }
     }
-    pub fn idx(&self) -> ContentIndex { self.idx }
+    pub fn idx(&self) -> ContentIndex {
+        self.idx
+    }
 }
 
 pub enum ContentData<'a> {
@@ -151,14 +154,19 @@ impl<'a> Iterator for ContentRegionIter<'a> {
         if chunk.ty().contains(tmd::ContentType::ENCRYPTED) {
             let mut iv = [0u8; 0x10];
             iv[0] = idx as u8;
-            data = ContentData::Decrypted(Aes128CbcDec::new(&self.title_key.into(), &iv.into())
-                .decrypt_padded_vec_mut::<NoPadding>(&self.buf[self.offset..chunk.size() as usize]).ok()?);
+            data = ContentData::Decrypted(
+                Aes128CbcDec::new(&self.title_key.into(), &iv.into())
+                    .decrypt_padded_vec_mut::<NoPadding>(
+                        &self.buf[self.offset..chunk.size() as usize],
+                    )
+                    .ok()?,
+            );
         } else {
             data = ContentData::Unencrypted(&self.buf[self.offset..chunk.size() as usize])
         }
-        
+
         self.chunk_idx += 1;
-        Some(ContentRegion { data, idx})
+        Some(ContentRegion { data, idx })
     }
 }
 
@@ -173,11 +181,12 @@ pub struct MetaRegion {
 assert_eq_size!([u8; 0x3ac0], MetaRegion);
 
 impl MetaRegion {
-    pub fn dependencies(&self) -> [MaybeTitleId; 0x30] { self.dependencies }
+    pub fn dependencies(&self) -> [MaybeTitleId; 0x30] {
+        self.dependencies
+    }
     pub fn dependencies_iter(&self) -> impl Iterator<Item = TitleId> {
         let copy = self.dependencies;
-        copy.into_iter()
-            .filter_map(|v| v.to_titleid().ok())
+        copy.into_iter().filter_map(|v| v.to_titleid().ok())
     }
     pub fn icon(&self) -> Result<&Smdh> {
         Smdh::from_slice(&self.icon)

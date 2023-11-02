@@ -1,16 +1,16 @@
-use std::sync::OnceLock;
 use std::collections::HashMap;
-use std::mem;
-use std::marker::PhantomData;
 use std::fmt;
+use std::marker::PhantomData;
+use std::mem;
+use std::sync::OnceLock;
 
 use crate::string::SizedCString;
 use crate::{CytrynaError, Result};
 
 pub mod aes128_ctr {
     pub use aes::cipher::block_padding::NoPadding;
-    pub use aes::cipher::KeyIvInit;
     pub use aes::cipher::BlockDecryptMut;
+    pub use aes::cipher::KeyIvInit;
     pub type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
 }
 
@@ -24,7 +24,7 @@ pub struct KeyBag {
 impl KeyBag {
     pub fn new() -> Self {
         Self {
-            keys: HashMap::new()
+            keys: HashMap::new(),
         }
     }
     pub fn set_key(&mut self, idx: KeyIndex, key: [u8; 0x10]) {
@@ -94,12 +94,16 @@ pub struct SignedDataInner<T: ?Sized + FromBytes + fmt::Debug, S: Signature> {
 }
 
 impl<T: ?Sized + FromBytes + fmt::Debug, S: Signature> SignedDataInner<T, S> {
-    pub fn data(&self) -> &T { T::cast(&self.data) }
+    pub fn data(&self) -> &T {
+        T::cast(&self.data)
+    }
 }
 
 impl<T, S> fmt::Debug for SignedDataInner<T, S>
 where
-    T: ?Sized + FromBytes + fmt::Debug, S: Signature {
+    T: ?Sized + FromBytes + fmt::Debug,
+    S: Signature,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("SignedDataInner")
             .field("sig_type", &self.sig_type)
@@ -117,25 +121,14 @@ pub enum SignedData<'a, T: ?Sized + FromBytes + fmt::Debug> {
 }
 
 impl<T> fmt::Debug for SignedData<'_, T>
-    where T: ?Sized + FromBytes + fmt::Debug
+where
+    T: ?Sized + FromBytes + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Rsa4096Sha256(inner) => {
-                f.debug_tuple("Rsa4096Sha256")
-                    .field(inner)
-                    .finish()
-            },
-            Self::Rsa2048Sha256(inner) => {
-                f.debug_tuple("Rsa2048Sha256")
-                    .field(inner)
-                    .finish()
-            },
-            Self::EcdsaSha256(inner) => {
-                f.debug_tuple("EcdsaSha256")
-                    .field(inner)
-                    .finish()
-            },
+            Self::Rsa4096Sha256(inner) => f.debug_tuple("Rsa4096Sha256").field(inner).finish(),
+            Self::Rsa2048Sha256(inner) => f.debug_tuple("Rsa2048Sha256").field(inner).finish(),
+            Self::EcdsaSha256(inner) => f.debug_tuple("EcdsaSha256").field(inner).finish(),
         }
     }
 }
@@ -143,7 +136,12 @@ impl<T> fmt::Debug for SignedData<'_, T>
 impl<T: ?Sized + FromBytes + fmt::Debug> SignedData<'_, T> {
     pub fn from_bytes(bytes: &[u8]) -> Result<SignedData<T>> {
         unsafe {
-            if bytes[0] != 0x0 || bytes[1] != 0x1 || bytes[2] != 0x0 || bytes[3] >= 0x06 || bytes[3] <= 0x02 {
+            if bytes[0] != 0x0
+                || bytes[1] != 0x1
+                || bytes[2] != 0x0
+                || bytes[3] >= 0x06
+                || bytes[3] <= 0x02
+            {
                 return Err(CytrynaError::InvalidMagic);
             }
 

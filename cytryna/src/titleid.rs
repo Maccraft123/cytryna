@@ -1,7 +1,7 @@
 use std::mem;
 
-use bitflags::bitflags;
 use crate::{CytrynaError, Result};
+use bitflags::bitflags;
 use static_assertions::assert_eq_size;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -27,12 +27,12 @@ impl MaybeTitleIdBe {
         TitleId::from_u64(self.raw.swap_bytes())
     }
     pub fn to_le(self) -> MaybeTitleId {
-        MaybeTitleId { raw: self.raw.swap_bytes() }
+        MaybeTitleId {
+            raw: self.raw.swap_bytes(),
+        }
     }
     pub fn to_bytes(self) -> [u8; 8] {
-        unsafe {
-            mem::transmute(self)
-        }
+        unsafe { mem::transmute(self) }
     }
 }
 
@@ -61,9 +61,15 @@ impl TitleId {
 
         Ok(unsafe { mem::transmute(what) })
     }
-    pub fn id(&self) -> u32 { self.id }
-    pub fn category(&self) -> Category { self.category }
-    pub fn plat(&self) -> Platform { self.plat }
+    pub fn id(&self) -> u32 {
+        self.id
+    }
+    pub fn category(&self) -> Category {
+        self.category
+    }
+    pub fn plat(&self) -> Platform {
+        self.plat
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

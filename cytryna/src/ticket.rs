@@ -1,7 +1,7 @@
 use std::mem;
 
+use crate::crypto::{aes128_ctr::*, FromBytes, KeyBag, KeyIndex, SignedData};
 use crate::titleid::MaybeTitleIdBe;
-use crate::crypto::{aes128_ctr::*, KeyIndex, KeyBag, SignedData, FromBytes};
 use crate::Result;
 
 use derivative::Derivative;
@@ -16,22 +16,28 @@ pub struct TicketInner {
     ca_crl_version: u8,
     signer_crl_version: u8,
     title_key: [u8; 0x10],
-    #[derivative(Debug="ignore")] _reserved0: u8,
+    #[derivative(Debug = "ignore")]
+    _reserved0: u8,
     ticket_id: u64be,
     console_id: u32be,
     title_id: MaybeTitleIdBe,
-    #[derivative(Debug="ignore")] _reserved1: [u8; 0x2],
+    #[derivative(Debug = "ignore")]
+    _reserved1: [u8; 0x2],
     ticket_title_version: u16be,
-    #[derivative(Debug="ignore")] _reserved2: [u8; 0x8],
+    #[derivative(Debug = "ignore")]
+    _reserved2: [u8; 0x8],
     license_type: u8,
     key_index: u8,
-    #[derivative(Debug="ignore")] _reserved3: [u8; 0x2a],
+    #[derivative(Debug = "ignore")]
+    _reserved3: [u8; 0x2a],
     maybe_eshop_account_id: u32be,
-    #[derivative(Debug="ignore")] _reserved4: u8,
+    #[derivative(Debug = "ignore")]
+    _reserved4: u8,
     audit: u8,
-    #[derivative(Debug="ignore")] _reserved5: [u8; 0x42],
+    #[derivative(Debug = "ignore")]
+    _reserved5: [u8; 0x42],
     limits: [u8; 0x40],
-    #[derivative(Debug="ignore")]
+    #[derivative(Debug = "ignore")]
     content_index: [u8],
 }
 
@@ -60,6 +66,10 @@ impl Ticket<'_> {
             .unwrap();
         Ok(title_key)
     }
-    pub fn title_key_raw(&self) -> &[u8; 0x10] { &self.data().title_key }
-    pub fn key_index(&self) -> u8 { self.data().key_index }
+    pub fn title_key_raw(&self) -> &[u8; 0x10] {
+        &self.data().title_key
+    }
+    pub fn key_index(&self) -> u8 {
+        self.data().key_index
+    }
 }
