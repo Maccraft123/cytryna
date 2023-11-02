@@ -2,6 +2,7 @@ use std::os::raw::c_char;
 use std::mem;
 
 use crate::string::SizedCString;
+use crate::{CytrynaError, Result};
 
 use bitflags::bitflags;
 use derivative::Derivative;
@@ -93,45 +94,45 @@ pub struct Ncch {
 // - encryption and decryption
 impl Ncch {
     pub fn header(&self) -> &NcchHeader { &self.header }
-    // TODO: Result<Self, BikeshednameError>
-   pub  fn from_slice(what: &[u8]) -> &Self {
+   pub  fn from_slice(what: &[u8]) -> Result<&Self> {
         let alignment = mem::align_of::<NcchHeader>();
         assert_eq!(0, what.as_ptr().align_offset(alignment));
 
         let me: &Ncch = unsafe { mem::transmute(what) };
         if &me.header.magic != b"NCCH" {
-            panic!("wrong magic");
+            Err(CytrynaError::InvalidMagic)?;
         }
-        me
+        Ok(me)
     }
     // TODO: when are regions absent?
-    fn region(&self, offset: u32, size: u32) -> Option<&[u8]> {
+    fn region(&self, offset: u32, size: u32) -> Result<&[u8]> {
+        if offset == 0 || size == 0 {
+            return Err(CytrynaError::MissingRegion)
+        }
+
         let offset = offset as usize * 0x200 - mem::size_of::<NcchHeader>();
         let size = size as usize * 0x200;
-        Some(&self.data[offset..][..size])
+        Ok(&self.data[offset..][..size])
     }
-    pub fn plain_region(&self) -> Option<&[u8]> {
+    pub fn plain_region(&self) -> Result<&[u8]> {
         self.region(self.header.plain_offset, self.header.plain_size)
     }
-    pub fn logo_region(&self) -> Option<&[u8]> {
+    pub fn logo_region(&self) -> Result<&[u8]> {
         self.region(self.header.logo_offset, self.header.logo_size)
     }
-    pub fn exefs_region(&self) -> Option<&[u8]> {
+    pub fn exefs_region(&self) -> Result<&[u8]> {
         self.region(self.header.exefs_offset, self.header.exefs_size)
     }
-    pub fn exefs(&self) -> Option<&ExeFs> {
+    pub fn exefs(&self) -> Result<&ExeFs> {
         unsafe {
-            if let Some(reg) = self.exefs_region() {
-                let alignment = mem::align_of::<ExeFsHeader>();
-                assert_eq!(0, reg.as_ptr().align_offset(alignment));
+            let reg = self.exefs_region()?;
+            let alignment = mem::align_of::<ExeFsHeader>();
+            assert_eq!(0, reg.as_ptr().align_offset(alignment));
 
-                Some(mem::transmute(reg))
-            } else {
-                None
-            }
+            Ok(mem::transmute(reg))
         }
     }
-    pub fn romfs_region(&self) -> Option<&[u8]> {
+    pub fn romfs_region(&self) -> Result<&[u8]> {
         self.region(self.header.romfs_offset, self.header.romfs_size)
     }
     pub fn flags(&self) -> &NcchFlags { &self.header.flags }

@@ -1,6 +1,7 @@
 use std::mem;
 
 use bitflags::bitflags;
+use crate::{CytrynaError, Result};
 use static_assertions::assert_eq_size;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -10,7 +11,7 @@ pub struct MaybeTitleId {
 }
 
 impl MaybeTitleId {
-    pub fn to_titleid(self) -> Option<TitleId> {
+    pub fn to_titleid(self) -> Result<TitleId> {
         TitleId::from_u64(self.raw)
     }
 }
@@ -22,7 +23,7 @@ pub struct MaybeTitleIdBe {
 }
 
 impl MaybeTitleIdBe {
-    pub fn to_titleid(self) -> Option<TitleId> {
+    pub fn to_titleid(self) -> Result<TitleId> {
         TitleId::from_u64(self.raw.swap_bytes())
     }
     pub fn to_le(self) -> MaybeTitleId {
@@ -51,15 +52,14 @@ impl TitleId {
     pub fn to_u64(self) -> u64 {
         unsafe { mem::transmute(self) }
     }
-    pub fn from_u64(what: u64) -> Option<TitleId> {
+    pub fn from_u64(what: u64) -> Result<TitleId> {
         let platform = (what & 0x0000_0000_0000_ffff) as u16;
-        println!("{:x} ", platform);
 
-        if platform > 0 && platform < 6 {
-            Some(unsafe { mem::transmute(what) })
-        } else {
-            None
+        if platform >= 6 {
+            return Err(CytrynaError::EnumValueOutOfRange("smdh::Platform"));
         }
+
+        Ok(unsafe { mem::transmute(what) })
     }
     pub fn id(&self) -> u32 { self.id }
     pub fn category(&self) -> Category { self.category }

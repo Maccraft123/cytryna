@@ -6,8 +6,9 @@ use static_assertions::assert_eq_size;
 use crate::crypto::aes128_ctr::*;
 use crate::titleid::{TitleId, MaybeTitleId};
 use crate::ticket::Ticket;
-use crate::tmd::{self, ContentIndex, ContentChunk, Tmd};
+use crate::tmd::{self, ContentIndex, Tmd};
 use crate::smdh::Smdh;
+use crate::{CytrynaError, Result};
 
 fn align(what: u32) -> usize {
     if what % 0x40 != 0 {
@@ -40,8 +41,12 @@ pub struct Cia {
 }
 
 impl Cia {
-    pub fn looks_ok(&self) -> bool {
-        self.header.hdr_size == mem::size_of::<CiaHeader>() as u32
+    fn looks_ok(&self) -> Result<()> {
+        if self.header.hdr_size != mem::size_of::<CiaHeader>() as u32 {
+            Err(CytrynaError::InvalidHeaderSize)
+        } else {
+            Ok(())
+        }
     }
     pub fn header(&self) -> &CiaHeader {
         &self.header
@@ -51,36 +56,36 @@ impl Cia {
         // so we have to subtract unaligned header size
         align(mem::size_of::<CiaHeader>() as u32) - mem::size_of::<CiaHeader>()
     }
-    pub fn from_slice(what: &[u8]) -> &Self {
+    pub fn from_slice(what: &[u8]) -> Result<&Self> {
         let alignment = mem::align_of::<CiaHeader>();
         assert_eq!(0, what.as_ptr().align_offset(alignment));
 
         let me: &Cia = unsafe { mem::transmute(what) };
-        assert!(me.looks_ok());
-        me
+        me.looks_ok()?;
+        Ok(me)
     }
 
     pub fn cert_chain_region(&self) -> &[u8] {
         &self.data[Self::hdr_offset()..][..align(self.header.cert_size)]
     }
-    pub fn ticket_region(&self) -> Option<Ticket> {
+    pub fn ticket_region(&self) -> Result<Ticket> {
         let offset = Self::hdr_offset() + align(self.header.cert_size);
         Ticket::from_bytes(&self.data[offset..][..align(self.header.ticket_size)])
     }
-    pub fn tmd_region(&self) -> Option<Tmd> {
+    pub fn tmd_region(&self) -> Result<Tmd> {
         let offset =
             Self::hdr_offset() + align(self.header.cert_size) + align(self.header.ticket_size);
         //Some(unsafe { mem::transmute(&self.data[offset..][..align(self.header.tmd_size)]) })
         Tmd::from_bytes(&self.data[offset..][..align(self.header.tmd_size)])
     }
-    pub fn content_region(&self) -> Option<ContentRegionIter> {
+    pub fn content_region(&self) -> Result<ContentRegionIter> {
         let offset = Self::hdr_offset()
             + align(self.header.cert_size)
             + align(self.header.ticket_size)
             + align(self.header.tmd_size);
         let title_key = self.ticket_region()?.title_key()?;
         let tmd = self.tmd_region()?;
-        Some(ContentRegionIter {
+        Ok(ContentRegionIter {
             tmd,
             title_key,
             buf: &self.data[offset..][..align(self.header.content_size as u32)],
@@ -172,9 +177,9 @@ impl MetaRegion {
     pub fn dependencies_iter(&self) -> impl Iterator<Item = TitleId> {
         let copy = self.dependencies;
         copy.into_iter()
-            .filter_map(|v| v.to_titleid())
+            .filter_map(|v| v.to_titleid().ok())
     }
-    pub fn icon(&self) -> Option<&Smdh> {
+    pub fn icon(&self) -> Result<&Smdh> {
         Smdh::from_slice(&self.icon)
     }
 }

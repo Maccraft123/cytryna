@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::fmt;
 
 use crate::string::SizedCString;
+use crate::{CytrynaError, Result};
 
 pub mod aes128_ctr {
     pub use aes::cipher::block_padding::NoPadding;
@@ -32,11 +33,11 @@ impl KeyBag {
     pub fn finalize(self) {
         let _ = KEY_BAG.set(self);
     }
-    pub fn get_key(&self, idx: KeyIndex) -> Option<&[u8; 0x10]> {
-        self.keys.get(&idx)
+    pub fn get_key(&self, idx: KeyIndex) -> Result<&[u8; 0x10]> {
+        self.keys.get(&idx).ok_or(CytrynaError::MissingKey(idx))
     }
-    pub fn global() -> Option<&'static Self> {
-        KEY_BAG.get()
+    pub fn global() -> Result<&'static Self> {
+        KEY_BAG.get().ok_or(CytrynaError::NoKeyBag)
     }
 }
 
@@ -48,6 +49,18 @@ pub enum KeyIndex {
     CommonN(u8),
 }
 
+impl fmt::Display for KeyIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let string = match self {
+            Self::Generator => "generator".to_string(),
+            Self::Slot(num, ty) => format!("slot0x{num:X}Key{ty}"),
+            Self::Common(num) => format!("common{num}"),
+            Self::CommonN(num) => format!("common{num}N"),
+        };
+        f.write_str(&string)
+    }
+}
+
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum KeyType {
     X,
@@ -55,8 +68,19 @@ pub enum KeyType {
     N,
 }
 
+impl fmt::Display for KeyType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let string = match self {
+            Self::X => "X",
+            Self::Y => "Y",
+            Self::N => "N",
+        };
+        f.write_str(string)
+    }
+}
+
 pub trait FromBytes {
-    fn bytes_ok(_: &[u8]) -> bool;
+    fn bytes_ok(_: &[u8]) -> Result<()>;
     fn cast(_: &[u8]) -> &Self;
 }
 
@@ -117,29 +141,27 @@ impl<T> fmt::Debug for SignedData<'_, T>
 }
 
 impl<T: ?Sized + FromBytes + fmt::Debug> SignedData<'_, T> {
-    pub fn from_bytes(bytes: &[u8]) -> Option<SignedData<T>> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<SignedData<T>> {
         unsafe {
-            if bytes[0] != 0x0 || bytes[1] != 0x1 || bytes[2] != 0x0 {
-                panic!("asdfasdf");
+            if bytes[0] != 0x0 || bytes[1] != 0x1 || bytes[2] != 0x0 || bytes[3] >= 0x06 || bytes[3] <= 0x02 {
+                return Err(CytrynaError::InvalidMagic);
             }
 
             let sig_size = match bytes[3] {
                 0x03 => mem::size_of::<Rsa4096Sha256>(),
                 0x04 => mem::size_of::<Rsa2048Sha256>(),
                 0x05 => mem::size_of::<EcdsaSha256>(),
-                _ => panic!("fdsa"),
+                _ => unreachable!("Already checked if it's in range"),
             };
             let offset = sig_size + mem::size_of::<SignatureType>() + 0x40;
 
-            if !T::bytes_ok(&bytes[offset..]) {
-                panic!("asdf")
-            }
+            T::bytes_ok(&bytes[offset..])?;
 
             match bytes[3] {
-                0x03 => Some(SignedData::Rsa4096Sha256(mem::transmute(bytes))),
-                0x04 => Some(SignedData::Rsa2048Sha256(mem::transmute(bytes))),
-                0x05 => Some(SignedData::EcdsaSha256(mem::transmute(bytes))),
-                _ => None,
+                0x03 => Ok(SignedData::Rsa4096Sha256(mem::transmute(bytes))),
+                0x04 => Ok(SignedData::Rsa2048Sha256(mem::transmute(bytes))),
+                0x05 => Ok(SignedData::EcdsaSha256(mem::transmute(bytes))),
+                _ => unreachable!("Already checked if it's in range"),
             }
         }
     }

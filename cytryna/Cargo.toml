@@ -13,6 +13,7 @@ derivative = "2.2.0"
 embedded-graphics = { version = "0.8.1", optional = true }
 redox_simple_endian = "0.2.1"
 static_assertions = "1.1.0"
+thiserror = "1.0.50"
 
 [features]
 default = ["embedded_graphics"]

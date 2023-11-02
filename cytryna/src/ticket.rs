@@ -2,7 +2,7 @@ use std::mem;
 
 use crate::titleid::MaybeTitleIdBe;
 use crate::crypto::{aes128_ctr::*, KeyIndex, KeyBag, SignedData, FromBytes};
-
+use crate::Result;
 
 use derivative::Derivative;
 use redox_simple_endian::*;
@@ -36,8 +36,8 @@ pub struct TicketInner {
 }
 
 impl FromBytes for TicketInner {
-    fn bytes_ok(_: &[u8]) -> bool {
-        true
+    fn bytes_ok(_: &[u8]) -> Result<()> {
+        Ok(())
     }
     fn cast(bytes: &[u8]) -> &Self {
         unsafe { mem::transmute(bytes) }
@@ -47,7 +47,7 @@ impl FromBytes for TicketInner {
 pub type Ticket<'a> = SignedData<'a, TicketInner>;
 
 impl Ticket<'_> {
-    pub fn title_key(&self) -> Option<[u8; 0x10]> {
+    pub fn title_key(&self) -> Result<[u8; 0x10]> {
         let mut iv = [0u8; 0x10];
         iv[..0x8].copy_from_slice(&self.data().title_id.to_bytes());
 
@@ -56,8 +56,9 @@ impl Ticket<'_> {
         let key = KeyBag::global()?.get_key(KeyIndex::CommonN(idx))?;
 
         Aes128CbcDec::new(key.into(), &iv.into())
-            .decrypt_padded_mut::<NoPadding>(&mut title_key).ok()?;
-        Some(title_key)
+            .decrypt_padded_mut::<NoPadding>(&mut title_key)
+            .unwrap();
+        Ok(title_key)
     }
     pub fn title_key_raw(&self) -> &[u8; 0x10] { &self.data().title_key }
     pub fn key_index(&self) -> u8 { self.data().key_index }

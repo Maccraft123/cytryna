@@ -2,6 +2,7 @@ use std::{fmt, mem, slice, ptr};
 
 use crate::crypto::{FromBytes, SignedData};
 use crate::titleid::{MaybeTitleIdBe, TitleId};
+use crate::Result;
 
 use bitflags::bitflags;
 use derivative::Derivative;
@@ -42,8 +43,8 @@ pub struct TmdInner {
 
 impl FromBytes for TmdInner {
     // TODO: check validity of content indexes
-    fn bytes_ok(_: &[u8]) -> bool {
-        true
+    fn bytes_ok(_: &[u8]) -> Result<()> {
+        Ok(())
     }
     fn cast(bytes: &[u8]) -> &Self {
         unsafe { mem::transmute(bytes) }
@@ -53,7 +54,7 @@ impl FromBytes for TmdInner {
 pub type Tmd<'a> = SignedData<'a, TmdInner>;
 
 impl<'a> Tmd<'a> {
-    pub fn title_id(&self) -> Option<TitleId> { self.data().title_id.to_titleid() }
+    pub fn title_id(&self) -> Result<TitleId> { self.data().title_id.to_titleid() }
     pub fn content_count(&self) -> u16 { self.data().content_count.into() }
 
     pub fn content_chunks(&self) -> &[ContentChunk] {
@@ -93,7 +94,7 @@ impl ContentChunk {
     pub fn ty(&self) -> ContentType { ContentType::from_bits_retain(self.ty.to_native()) }
     pub fn size(&self) -> u64 { u64::from_be_bytes(self.size) }
     pub fn hash(&self) -> &[u8; 0x20] { &self.hash }
-    fn is_nil(&self) -> bool {
+    pub fn is_nil(&self) -> bool {
         self.ty.to_native() == 0 && self.size == [0; 8] && self.hash.iter().all(|v| *v == 0)
     }
 }
