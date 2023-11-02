@@ -92,6 +92,7 @@ pub struct Ncch {
 // - modification of data inside of it?
 // - encryption and decryption
 impl Ncch {
+    pub fn header(&self) -> &NcchHeader { &self.header }
     // TODO: Result<Self, BikeshednameError>
    pub  fn from_slice(what: &[u8]) -> &Self {
         let alignment = mem::align_of::<NcchHeader>();

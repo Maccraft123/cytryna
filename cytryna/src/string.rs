@@ -1,4 +1,4 @@
-use std::{fmt, string, str, mem, borrow::Cow};
+use std::{fmt, string, str, borrow::Cow};
 
 #[derive(Clone)]
 #[repr(transparent)]

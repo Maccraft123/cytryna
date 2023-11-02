@@ -6,7 +6,12 @@ use std::fmt;
 
 use crate::string::SizedCString;
 
-pub type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
+pub mod aes128_ctr {
+    pub use aes::cipher::block_padding::NoPadding;
+    pub use aes::cipher::KeyIvInit;
+    pub use aes::cipher::BlockDecryptMut;
+    pub type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
+}
 
 static KEY_BAG: OnceLock<KeyBag> = OnceLock::new();
 
@@ -65,7 +70,7 @@ pub struct SignedDataInner<T: ?Sized + FromBytes + fmt::Debug, S: Signature> {
 }
 
 impl<T: ?Sized + FromBytes + fmt::Debug, S: Signature> SignedDataInner<T, S> {
-    fn data(&self) -> &T { T::cast(&self.data) }
+    pub fn data(&self) -> &T { T::cast(&self.data) }
 }
 
 impl<T, S> fmt::Debug for SignedDataInner<T, S>
@@ -155,7 +160,9 @@ pub enum SignatureType {
     EcdsaSha256 = 0x05000100,
 }
 
+#[allow(private_bounds)]
 pub trait Signature: Sealed {}
+
 trait Sealed {}
 
 #[repr(C, packed)]

@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::mem;
 
 use crate::string::SizedCStringUtf16;
@@ -176,6 +175,8 @@ impl<const SIZE: usize> IconData<SIZE> {
     }
 }
 
+// gonna be procrastinating on that, comment for now to silence warnings
+/*
 #[cfg(feature = "embedded_graphics")]
 use embedded_graphics::{
     prelude::*,
@@ -237,3 +238,4 @@ impl<const SIZE: usize> OriginDimensions for IconData<SIZE> {
         }
     }
 }
+*/

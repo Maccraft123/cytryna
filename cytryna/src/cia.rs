@@ -3,9 +3,10 @@ use std::mem;
 use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
+use crate::crypto::aes128_ctr::*;
 use crate::titleid::{TitleId, MaybeTitleId};
 use crate::ticket::Ticket;
-use crate::tmd::Tmd;
+use crate::tmd::{self, ContentIndex, ContentChunk, Tmd};
 use crate::smdh::Smdh;
 
 fn align(what: u32) -> usize {
@@ -28,7 +29,7 @@ pub struct CiaHeader {
     tmd_size: u32,
     meta_size: u32,
     content_size: u64,
-    #[derivative(Debug="ignore")] content_index: [u8; 0x2000],
+    #[derivative(Debug = "ignore")] content_index: [u8; 0x2000],
 }
 assert_eq_size!([u8; 0x2020], CiaHeader);
 
@@ -72,12 +73,20 @@ impl Cia {
         //Some(unsafe { mem::transmute(&self.data[offset..][..align(self.header.tmd_size)]) })
         Tmd::from_bytes(&self.data[offset..][..align(self.header.tmd_size)])
     }
-    pub fn content_region(&self) -> &[u8] {
+    pub fn content_region(&self) -> Option<ContentRegionIter> {
         let offset = Self::hdr_offset()
             + align(self.header.cert_size)
             + align(self.header.ticket_size)
             + align(self.header.tmd_size);
-        &self.data[offset..][..align(self.header.content_size as u32)]
+        let title_key = self.ticket_region()?.title_key()?;
+        let tmd = self.tmd_region()?;
+        Some(ContentRegionIter {
+            tmd,
+            title_key,
+            buf: &self.data[offset..][..align(self.header.content_size as u32)],
+            offset: 0,
+            chunk_idx: 0,
+        })
     }
     pub fn meta_region(&self) -> Option<&MetaRegion> {
         if self.header.meta_size != 0 {
@@ -94,6 +103,57 @@ impl Cia {
         } else {
             None
         }
+    }
+}
+
+pub struct ContentRegion<'a> {
+    data: ContentData<'a>,
+    idx: ContentIndex
+}
+
+impl ContentRegion<'_> {
+    pub fn data(&self) -> &[u8] {
+        match &self.data {
+            ContentData::Decrypted(vec) => vec.as_slice(),
+            ContentData::Unencrypted(slice) => slice,
+        }
+    }
+    pub fn idx(&self) -> ContentIndex { self.idx }
+}
+
+pub enum ContentData<'a> {
+    Decrypted(Vec<u8>),
+    Unencrypted(&'a [u8]),
+}
+
+pub struct ContentRegionIter<'a> {
+    tmd: Tmd<'a>,
+    title_key: [u8; 0x10],
+    buf: &'a [u8],
+    offset: usize,
+    chunk_idx: u16,
+}
+
+impl<'a> Iterator for ContentRegionIter<'a> {
+    type Item = ContentRegion<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let chunks = self.tmd.content_chunks();
+        let chunk = chunks[self.chunk_idx as usize];
+        let idx = chunk.idx();
+        let data;
+
+        if chunk.ty().contains(tmd::ContentType::ENCRYPTED) {
+            let mut iv = [0u8; 0x10];
+            iv[0] = idx as u8;
+            data = ContentData::Decrypted(Aes128CbcDec::new(&self.title_key.into(), &iv.into())
+                .decrypt_padded_vec_mut::<NoPadding>(&self.buf[self.offset..chunk.size() as usize]).ok()?);
+        } else {
+            data = ContentData::Unencrypted(&self.buf[self.offset..chunk.size() as usize])
+        }
+        
+        self.chunk_idx += 1;
+        Some(ContentRegion { data, idx})
     }
 }
 

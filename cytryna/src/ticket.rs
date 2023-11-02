@@ -1,15 +1,11 @@
 use std::mem;
 
 use crate::titleid::MaybeTitleIdBe;
-use crate::string::SizedCString;
-use crate::crypto::{KeyIndex, KeyBag, Aes128CbcDec, SignedData, FromBytes};
+use crate::crypto::{aes128_ctr::*, KeyIndex, KeyBag, SignedData, FromBytes};
 
-use aes::cipher::block_padding::NoPadding;
-use cbc::cipher::{KeyIvInit, BlockDecryptMut};
 
 use derivative::Derivative;
 use redox_simple_endian::*;
-use static_assertions::assert_eq_size;
 
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -66,30 +62,3 @@ impl Ticket<'_> {
     pub fn title_key_raw(&self) -> &[u8; 0x10] { &self.data().title_key }
     pub fn key_index(&self) -> u8 { self.data().key_index }
 }
-
-pub trait Signature: Sealed {}
-trait Sealed {}
-
-#[repr(C, packed)]
-pub struct Rsa4096Sha256 {
-    sig: [u8; 0x200],
-    pad: [u8; 0x3c],
-}
-impl Sealed for Rsa4096Sha256 {}
-impl Signature for Rsa4096Sha256 {}
-
-#[repr(C, packed)]
-pub struct Rsa2048Sha256 {
-    sig: [u8; 0x100],
-    pad: [u8; 0x3c],
-}
-impl Sealed for Rsa2048Sha256 {}
-impl Signature for Rsa2048Sha256 {}
-
-#[repr(C, packed)]
-pub struct EcdsaSha256 {
-    sig: [u8; 0x3c],
-    pad: [u8; 0x40],
-}
-impl Sealed for EcdsaSha256 {}
-impl Signature for EcdsaSha256 {}

@@ -91,19 +91,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cytryna"
-version = "0.1.0"
-dependencies = [
- "aes",
- "bitflags",
- "cbc",
- "derivative",
- "embedded-graphics",
- "redox_simple_endian",
- "static_assertions",
-]
-
-[[package]]
 name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -174,9 +161,22 @@ checksum = "a08173bc88b7955d1b3145aa561539096c421ac8debde8cbc3612ec635fee29b"
 
 [[package]]
 name = "micromath"
-version = "2.1.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3c8dda44ff03a2f238717214da50f65d5a53b45cd213a7370424ffdb6fae815"
+checksum = "39617bc909d64b068dcffd0e3e31679195b5576d0c83fadc52690268cc2b2b55"
+
+[[package]]
+name = "ncch_dec"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "bitflags",
+ "cbc",
+ "derivative",
+ "embedded-graphics",
+ "redox_simple_endian",
+ "static_assertions",
+]
 
 [[package]]
 name = "num-traits"
@@ -203,13 +203,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "readctr"
-version = "0.1.0"
-dependencies = [
- "cytryna",
 ]
 
 [[package]]

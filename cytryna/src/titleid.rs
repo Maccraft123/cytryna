@@ -1,8 +1,7 @@
-use std::{fmt, mem};
+use std::mem;
 
 use bitflags::bitflags;
 use static_assertions::assert_eq_size;
-use redox_simple_endian::{u64be, u32be};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(transparent)]
