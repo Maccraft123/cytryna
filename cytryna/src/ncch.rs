@@ -1,11 +1,12 @@
 use std::mem;
+use std::fmt;
 use std::os::raw::c_char;
 
 use crate::string::SizedCString;
 use crate::titleid::MaybeTitleId;
 use crate::{CytrynaError, Result};
 
-use bitfield::bitfield;
+use modular_bitfield::prelude::*;
 use bitflags::bitflags;
 use derivative::Derivative;
 use static_assertions::assert_eq_size;
@@ -140,7 +141,9 @@ impl Ncch {
         }
 
         unsafe {
-            Ok(mem::transmute(self.data[..self.header.exheader_size as usize].as_ptr()))
+            Ok(mem::transmute(
+                self.data[..self.header.exheader_size as usize].as_ptr(),
+            ))
         }
     }
     pub fn romfs_region(&self) -> Result<&[u8]> {
@@ -162,22 +165,26 @@ pub struct Exheader {
 }
 assert_eq_size!([u8; 0x800], Exheader);
 
-#[derive(Debug, Clone)]
+#[derive(Derivative, Clone)]
+#[derivative(Debug)]
 #[repr(C)]
 pub struct SystemControlInfo {
     app_title: SizedCString<0x8>,
+    #[derivative(Debug = "ignore")]
     _reserved0: [u8; 0x5],
     exheader_flags: ExheaderFlags,
     remaster_version: u16,
     text_code_set_info: CodeSetInfo,
     stack_size: u32,
     read_only_code_set_info: CodeSetInfo,
+    #[derivative(Debug = "ignore")]
     _reserved1: [u8; 0x4],
     data_code_set_info: CodeSetInfo,
     bss_size: u32,
     dep_list: [MaybeTitleId; 0x30],
     savedata_size: u64,
     jump_id: u64,
+    #[derivative(Debug = "ignore")]
     _reserved2: [u8; 0x30],
 }
 assert_eq_size!([u8; 0x200], SystemControlInfo);
@@ -209,7 +216,8 @@ pub struct AccessControlInfo {
 }
 assert_eq_size!([u8; 0x200], AccessControlInfo);
 
-#[derive(Debug, Clone)]
+#[derive(Derivative, Clone)]
+#[derivative(Debug)]
 #[repr(C)]
 pub struct Arm11LocalSystemCaps {
     program_id: MaybeTitleId,
@@ -221,28 +229,39 @@ pub struct Arm11LocalSystemCaps {
     resource_limit_desc: [u8; 0x20],
     storage_info: StorageInfo,
     service_access_control: [SizedCString<0x8>; 0x22],
+    #[derivative(Debug = "ignore")]
     _reserved0: [u8; 0xf],
     resource_limit_category: ResourceLimitCategory,
 }
 assert_eq_size!([u8; 0x170], Arm11LocalSystemCaps);
 
-bitfield! {
-    #[derive(Clone, Copy)]
-    pub struct Flag0(u8);
-    impl Debug;
-
-    ideal_processor, _: 1, 0;
-    affinity_mask, _: 3, 2;
-    old3ds_system_mode, _: 7, 4;
+#[bitfield]
+#[derive(Debug, Clone)]
+#[repr(u8)]
+pub struct Flag0 {
+    pub ideal_proccessor: B2,
+    pub affinity_mask: B2,
+    pub old3ds_system_mode: Old3dsSystemMode,
 }
 
-bitfield! {
-    #[derive(Clone, Copy)]
-    pub struct Flag1(u8);
-    impl Debug;
+#[derive(Debug, Clone, BitfieldSpecifier)]
+#[bits = 4]
+pub enum Old3dsSystemMode {
+    Prod64Mb = 0,
+    Undefined,
+    Dev1_96Mb,
+    Dev2_80Mb,
+    Dev3_72Mb,
+    Dev4_32Mb,
+}
 
-    enable_l2_cache, _: 0;
-    cpuspeed_804mhz, _: 1;
+#[bitfield]
+#[derive(Debug, Clone)]
+#[repr(u8)]
+pub struct Flag1 {
+    pub enable_l2_cache: bool,
+    pub cpuspeed_804mhz: bool,
+    #[skip] __: B6,
 }
 
 #[derive(Debug, Clone)]
@@ -250,8 +269,8 @@ bitfield! {
 pub enum New3dsSystemMode {
     Legacy = 0,
     Prod124Mb,
-    Dev1178Mb,
-    Dev2124Mb,
+    Dev1_178Mb,
+    Dev2_124Mb,
 }
 
 #[derive(Debug, Clone)]
@@ -302,18 +321,172 @@ pub enum ResourceLimitCategory {
     Other = 3,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[repr(C)]
 pub struct Arm11KernelCaps {
-    descriptors: [u32; 0x1c],
+    descriptors: [KernelCapRaw; 0x1c],
     _reserved0: [u8; 0x10],
 }
 assert_eq_size!([u8; 0x80], Arm11KernelCaps);
 
+impl Arm11KernelCaps {
+    fn decode_descriptors(&self) -> Vec<KernelCap> {
+        let mut ret = Vec::new();
+        let mut expect_nine = false;
+
+        for cap in self.descriptors.iter() {
+            let ones = cap.0.leading_ones();
+            let val = cap.0;
+
+            let desc = match ones {
+                3 => KernelCap::InterruptInfo,
+                4 => {
+                    KernelCap::EnableSyscalls(SyscallMask::from(val & !0xf0000000))
+                },
+                6 => {
+                    let val = (val & !0xfc000000).to_le_bytes();
+                    KernelCap::KernelReleaseVersion{major: val[1], minor: val[0]}
+                },
+                7 => KernelCap::HandleTableSize(val & !0xfe000000),
+                8 => KernelCap::KernelFlags(Arm11Flags::from(val & !0xff000000)),
+                9 => {
+                    expect_nine = !expect_nine;
+                    
+                    let bit20 = (val & 1 << 20) != 0;
+                    let addr = (val & !0xfff00000) << 16;
+
+                    if expect_nine {
+                        KernelCap::MapMemoryRangeStart{read_only: bit20, start: addr}
+                    } else {
+                        KernelCap::MapMemoryRangeEnd{cacheable: bit20, end: addr - 1}
+                    }
+                },
+                11 => todo!("MapIoMemoryPage"),
+                _ => continue,
+            };
+
+            ret.push(desc);
+        }
+
+        ret
+    }
+}
+
+impl fmt::Debug for Arm11KernelCaps {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.decode_descriptors().fmt(f)
+    }
+}
+
+#[derive(Clone)]
+#[repr(transparent)]
+pub struct KernelCapRaw(u32);
+
 #[derive(Debug, Clone)]
+pub enum KernelCap {
+    InterruptInfo,
+    EnableSyscalls(SyscallMask),
+    KernelReleaseVersion{major: u8, minor: u8},
+    HandleTableSize(u32),
+    KernelFlags(Arm11Flags),
+    MapMemoryRangeStart{read_only: bool, start: u32},
+    MapMemoryRangeEnd{cacheable: bool, end: u32},
+    MapIoMemoryPageStart,
+    MapIoMemoryPageEnd,
+}
+
+#[bitfield]
+#[derive(Clone)]
+#[repr(u32)]
+pub struct SyscallMask {
+    pub mask: B24,
+    pub idx: B3,
+    #[skip] __: B5,
+}
+
+impl SyscallMask {
+    fn has_syscall(&self, num: u8) -> bool {
+        let rem = num % 24;
+        let idx = num / 24;
+
+        if self.idx() != idx {
+            false
+        } else {
+            self.mask() & (1 << (rem & 31)) != 0
+        }
+    }
+    //pub fn iter(&self) -> impl Iterator<Item = (u8, bool)> {
+    //    SyscallIter { mask: self.mask(), idx: self.idx(), mask_shift: 0 }
+    //}
+}
+
+/*
+pub struct SyscallIter {
+    mask: u32,
+    idx: u8,
+    mask_shift: u8,
+}
+
+impl Iterator for SyscallIter {
+    type Item = (u8, bool);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.mask_shift > 24 {
+            return None;
+        }
+        
+        let num = self.idx * 24 + self.mask_shift;
+        let is_enabled = self.mask & (1 << self.mask_shift) != 0;
+        Some((num, is_enabled))
+    }
+}*/
+
+impl fmt::Debug for SyscallMask {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let idx = self.idx();
+        let syscall = idx*24;
+        let mut dbg_list = f.debug_list();
+        for num in syscall..syscall+24 {
+            if self.has_syscall(num) {
+                dbg_list.entry(&num);
+            }
+        }
+        dbg_list.finish()
+    }
+}
+
+#[bitfield]
+#[derive(Debug, Clone)]
+#[repr(u32)]
+pub struct Arm11Flags {
+    pub allow_debug: bool,
+    pub force_debug: bool,
+    pub allow_non_alphanum: bool,
+    pub shared_page_writing: bool,
+    pub priviledge_priority: bool,
+    pub allow_main_args: bool,
+    pub shared_deice_memory: bool,
+    pub runnable_on_sleep: bool,
+    pub memory_type: Arm11MemoryType,
+    pub special_memory: bool,
+    pub access_core2: bool,
+    #[skip] __: B18,
+}
+
+#[derive(Debug, Clone, BitfieldSpecifier)]
+#[bits = 4]
+pub enum Arm11MemoryType {
+    Application = 1,
+    System,
+    Base,
+}
+
+#[derive(Derivative, Clone)]
+#[derivative(Debug)]
 #[repr(C)]
 pub struct Arm9AccessControl {
     descriptors: Arm9Descriptors,
+    #[derivative(Debug = "ignore")]
     _pad: [u8; 0xd],
     version: u8,
 }
