@@ -289,7 +289,6 @@ assert_eq_size!([u8; 0x170], Arm11LocalSystemCaps);
 
 #[bitfield]
 #[derive(Debug, Clone)]
-#[repr(u8)]
 pub struct Flag0 {
     pub ideal_proccessor: B2,
     pub affinity_mask: B2,
@@ -309,7 +308,6 @@ pub enum Old3dsSystemMode {
 
 #[bitfield]
 #[derive(Debug, Clone)]
-#[repr(u8)]
 pub struct Flag1 {
     pub enable_l2_cache: bool,
     pub cpuspeed_804mhz: bool,

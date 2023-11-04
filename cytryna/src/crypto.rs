@@ -269,17 +269,13 @@ pub enum SignatureType {
     EcdsaSha256 = 0x05000100,
 }
 
-#[allow(private_bounds)]
-pub trait Signature: Sealed {}
-
-trait Sealed {}
+pub trait Signature: sealed_impl::Sealed {}
 
 #[repr(C, packed)]
 pub struct Rsa4096Sha256 {
     sig: [u8; 0x200],
     pad: [u8; 0x3c],
 }
-impl Sealed for Rsa4096Sha256 {}
 impl Signature for Rsa4096Sha256 {}
 
 #[repr(C, packed)]
@@ -287,7 +283,6 @@ pub struct Rsa2048Sha256 {
     sig: [u8; 0x100],
     pad: [u8; 0x3c],
 }
-impl Sealed for Rsa2048Sha256 {}
 impl Signature for Rsa2048Sha256 {}
 
 #[repr(C, packed)]
@@ -295,8 +290,14 @@ pub struct EcdsaSha256 {
     sig: [u8; 0x3c],
     pad: [u8; 0x40],
 }
-impl Sealed for EcdsaSha256 {}
 impl Signature for EcdsaSha256 {}
+
+mod sealed_impl {
+    pub trait Sealed {}
+    impl Sealed for super::Rsa4096Sha256 {}
+    impl Sealed for super::Rsa2048Sha256 {}
+    impl Sealed for super::EcdsaSha256 {}
+}
 
 #[cfg(test)]
 mod tests {

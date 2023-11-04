@@ -126,7 +126,6 @@ dependencies = [
  "embedded-graphics",
  "hex",
  "modular-bitfield",
- "redox_simple_endian",
  "sha2",
  "static_assertions",
  "thiserror",
@@ -278,12 +277,6 @@ dependencies = [
  "anyhow",
  "cytryna",
 ]
-
-[[package]]
-name = "redox_simple_endian"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4e4404b4e54e59e7bb5f5236b61d8e822c2a77b2e955be8072002ff7ff8d69c"
 
 [[package]]
 name = "sha2"

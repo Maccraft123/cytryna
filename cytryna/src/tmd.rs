@@ -6,7 +6,6 @@ use crate::CytrynaResult;
 
 use bitflags::bitflags;
 use derivative::Derivative;
-use redox_simple_endian::*;
 use static_assertions::assert_eq_size;
 
 #[derive(Derivative)]
@@ -18,21 +17,21 @@ pub struct TmdInner {
     signer_crl_version: u8,
     #[derivative(Debug = "ignore")]
     _reserved0: u8,
-    system_version: u64be,
+    system_version: [u8; 0x8],
     title_id: MaybeTitleIdBe,
-    title_type: u32be,
-    group_id: u16be,
-    save_data_size: u32be,
-    srl_private_save_size: u32be,
+    title_type: [u8; 0x4],
+    group_id: [u8; 0x2],
+    save_data_size: [u8; 0x4],
+    srl_private_save_size: [u8; 0x4],
     #[derivative(Debug = "ignore")]
     _reserved1: u32,
     srl_flag: u8,
     #[derivative(Debug = "ignore")]
     _reserved2: [u8; 0x31],
-    access_rights: u32be,
-    title_version: u16be,
-    content_count: u16be,
-    boot_content: u16be,
+    access_rights: [u8; 0x4],
+    title_version: [u8; 0x2],
+    content_count: [u8; 0x2],
+    boot_content: [u8; 0x2],
     #[derivative(Debug = "ignore")]
     _padding: u16,
     hash: [u8; 0x20],
@@ -58,7 +57,7 @@ impl<'a> Tmd<'a> {
         self.data().title_id.to_titleid()
     }
     pub fn content_count(&self) -> u16 {
-        self.data().content_count.into()
+        u16::from_be_bytes(self.data().content_count)
     }
 
     pub fn content_chunks(&self) -> &[ContentChunk] {
@@ -84,10 +83,10 @@ pub enum ContentIndex {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ContentChunk {
-    id: u32be,
+    id: [u8; 0x4],
     _pad: u8,
     idx: ContentIndex,
-    ty: u16be,
+    ty: [u8; 0x2],
     size: [u8; 8], // actually u64be
     hash: [u8; 0x20],
 }
@@ -95,13 +94,13 @@ assert_eq_size!([u8; 0x30], ContentChunk);
 
 impl ContentChunk {
     pub fn id(&self) -> u32 {
-        self.id.to_native()
+        u32::from_be_bytes(self.id)
     }
     pub fn idx(&self) -> ContentIndex {
         self.idx
     }
     pub fn ty(&self) -> ContentType {
-        ContentType::from_bits_retain(self.ty.to_native())
+        ContentType::from_bits_retain(u16::from_be_bytes(self.ty))
     }
     pub fn size(&self) -> u64 {
         u64::from_be_bytes(self.size)
@@ -110,7 +109,7 @@ impl ContentChunk {
         &self.hash
     }
     pub fn is_nil(&self) -> bool {
-        self.ty.to_native() == 0 && self.size == [0; 8] && self.hash.iter().all(|v| *v == 0)
+        self.ty == [0, 0] && self.size == [0; 8] && self.hash.iter().all(|v| *v == 0)
     }
 }
 
@@ -119,14 +118,14 @@ impl ContentChunk {
 pub struct ContentInfo {
     _pad: u8,
     idx: ContentIndex,
-    cmd_count: u16be,
+    cmd_count: [u8; 0x2],
     hash: [u8; 0x20],
 }
 assert_eq_size!([u8; 0x24], ContentInfo);
 
 impl fmt::Debug for ContentInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.cmd_count.to_native() != 0 || self.hash.iter().any(|v| *v != 0) {
+        if self.cmd_count != [0, 0] || self.hash.iter().any(|v| *v != 0) {
             f.debug_struct("ContentInfo")
                 .field("idx", &self.idx)
                 .field("cmd_count", &self.cmd_count)

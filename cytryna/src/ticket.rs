@@ -5,7 +5,6 @@ use crate::titleid::MaybeTitleIdBe;
 use crate::CytrynaResult;
 
 use derivative::Derivative;
-use redox_simple_endian::*;
 
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -18,19 +17,19 @@ pub struct TicketInner {
     title_key: [u8; 0x10],
     #[derivative(Debug = "ignore")]
     _reserved0: u8,
-    ticket_id: u64be,
-    console_id: u32be,
+    ticket_id: [u8; 0x8],
+    console_id: [u8; 0x4],
     title_id: MaybeTitleIdBe,
     #[derivative(Debug = "ignore")]
     _reserved1: [u8; 0x2],
-    ticket_title_version: u16be,
+    ticket_title_version: [u8; 0x2],
     #[derivative(Debug = "ignore")]
     _reserved2: [u8; 0x8],
     license_type: u8,
     key_index: u8,
     #[derivative(Debug = "ignore")]
     _reserved3: [u8; 0x2a],
-    maybe_eshop_account_id: u32be,
+    maybe_eshop_account_id: [u8; 0x4],
     #[derivative(Debug = "ignore")]
     _reserved4: u8,
     audit: u8,
