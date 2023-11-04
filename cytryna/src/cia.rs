@@ -8,7 +8,7 @@ use crate::smdh::Smdh;
 use crate::ticket::Ticket;
 use crate::titleid::{MaybeTitleId, TitleId};
 use crate::tmd::{self, ContentIndex, Tmd};
-use crate::{CytrynaError, CytrynaResult};
+use crate::{CytrynaError, CytrynaResult, VecOrSlice};
 
 const fn align(what: u32) -> usize {
     if what % 0x40 != 0 {
@@ -109,25 +109,15 @@ impl Cia {
 }
 
 pub struct ContentRegion<'a> {
-    data: ContentData<'a>,
+    data: VecOrSlice<'a, u8>,
     idx: ContentIndex,
 }
 
 impl ContentRegion<'_> {
-    pub fn data(&self) -> &[u8] {
-        match &self.data {
-            ContentData::Decrypted(vec) => vec.as_slice(),
-            ContentData::Unencrypted(slice) => slice,
-        }
-    }
+    pub fn data(&self) -> &[u8] { &self.data.as_slice() }
     pub fn idx(&self) -> ContentIndex {
         self.idx
     }
-}
-
-pub enum ContentData<'a> {
-    Decrypted(Vec<u8>),
-    Unencrypted(&'a [u8]),
 }
 
 pub struct ContentRegionIter<'a> {
@@ -150,7 +140,7 @@ impl<'a> Iterator for ContentRegionIter<'a> {
         if chunk.ty().contains(tmd::ContentType::ENCRYPTED) {
             let mut iv = [0u8; 0x10];
             iv[0] = idx as u8;
-            data = ContentData::Decrypted(
+            data = VecOrSlice::V(
                 Aes128CbcDec::new(&self.title_key.into(), &iv.into())
                     .decrypt_padded_vec_mut::<NoPadding>(
                         &self.buf[self.offset..chunk.size() as usize],
@@ -158,7 +148,7 @@ impl<'a> Iterator for ContentRegionIter<'a> {
                     .ok()?,
             );
         } else {
-            data = ContentData::Unencrypted(&self.buf[self.offset..chunk.size() as usize])
+            data = VecOrSlice::S(&self.buf[self.offset..chunk.size() as usize])
         }
 
         self.chunk_idx += 1;

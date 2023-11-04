@@ -15,7 +15,9 @@ pub mod aes128_ctr {
     pub use aes::cipher::block_padding::NoPadding;
     pub use aes::cipher::BlockDecryptMut;
     pub use aes::cipher::KeyIvInit;
+    pub use aes::cipher::StreamCipher;
     pub type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
+    pub type Aes128CtrDec = ctr::Ctr128BE<aes::Aes128>;
 }
 
 static KEY_BAG: OnceLock<KeyBag> = OnceLock::new();
@@ -68,6 +70,14 @@ impl KeyBag {
     pub fn global() -> CytrynaResult<&'static Self> {
         KEY_BAG.get().ok_or(CytrynaError::NoKeyBag)
     }
+}
+
+pub fn keygen(x: [u8; 0x10], y: [u8; 0x10]) -> CytrynaResult<[u8; 0x10]> {
+    let x = u128::from_be_bytes(x);
+    let y = u128::from_be_bytes(y);
+    let gen = u128::from_be_bytes(*KeyBag::global()?.get_key(KeyIndex::Generator)?);
+
+    Ok(((x.rotate_left(2) ^ y) + gen).rotate_right(41).to_be_bytes())
 }
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]

@@ -1,27 +1,44 @@
 use crate::string::SizedCString;
+use crate::VecOrSlice;
 
 use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
+#[derive(Debug)]
+#[repr(C)]
+pub struct ExeFs<'a> {
+    pub(super) compressed: bool,
+    pub(super) encrypted: bool,
+    pub(super) inner: &'a ExeFsInner,
+}
+
+impl ExeFs<'_> {
+    pub fn file_by_name<'a>(&'a self, name: &[u8]) -> Option<VecOrSlice<u8>> {
+        let header = self.inner.header.file_header_by_name(name)?;
+        let file = self.inner.file_by_header(header);
+
+        if self.compressed && name == b".code" {
+            todo!("exefs decompression")
+        } else {
+            Some(VecOrSlice::S(file))
+        }
+    }
+}
+
 #[derive(Derivative)]
 #[derivative(Debug)]
 #[repr(C)]
-pub struct ExeFs {
+pub struct ExeFsInner {
     header: ExeFsHeader,
     #[derivative(Debug = "ignore")]
     data: [u8],
 }
 
-impl ExeFs {
+impl ExeFsInner {
     pub fn file_by_header<'a>(&'a self, hdr: &'a FileHeader) -> &'a [u8] {
         &self.data[hdr.offset as usize..][..hdr.size as usize]
     }
-    pub fn file_by_name<'a>(&'a self, name: &[u8]) -> Option<&'a [u8]> {
-        let header = self.header.file_header_by_name(name)?;
-        Some(self.file_by_header(header))
-    }
 }
-
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug)]
@@ -68,4 +85,3 @@ impl FileHeader {
         !self.name.is_zero() && self.offset == 0 && self.size == 0
     }
 }
-

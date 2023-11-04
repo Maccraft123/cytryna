@@ -1,16 +1,17 @@
 pub mod exefs;
 
-use std::mem;
 use std::fmt;
+use std::mem;
 use std::os::raw::c_char;
 
+use crate::crypto::{self, aes128_ctr::*, KeyBag, KeyIndex, KeyType};
 use crate::string::SizedCString;
 use crate::titleid::MaybeTitleId;
-use crate::{CytrynaError, CytrynaResult};
+use crate::{CytrynaError, CytrynaResult, OwnedOrBorrowed};
 
-use modular_bitfield::prelude::*;
 use bitflags::bitflags;
 use derivative::Derivative;
+use modular_bitfield::prelude::*;
 use static_assertions::assert_eq_size;
 
 #[derive(Derivative, Clone)]
@@ -110,7 +111,11 @@ impl Ncch {
         Ok(me)
     }
     pub fn is_encrypted(&self) -> bool {
-        !self.header.flags.options.contains(NcchFlagsOptions::NO_CRYPTO)
+        !self
+            .header
+            .flags
+            .options
+            .contains(NcchFlagsOptions::NO_CRYPTO)
     }
     fn region(&self, offset: u32, size: u32) -> CytrynaResult<&[u8]> {
         if offset == 0 || size == 0 {
@@ -130,28 +135,59 @@ impl Ncch {
     pub fn exefs_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.exefs_offset, self.header.exefs_size)
     }
-    pub fn exefs(&self) -> CytrynaResult<&exefs::ExeFs> {
-        if self.is_encrypted() {
-            todo!("exefs decryption");
-        }
+    pub fn exefs(&self) -> CytrynaResult<exefs::ExeFs> {
+        let data = self.exefs_region()?;
+        let alignment = mem::align_of::<exefs::ExeFsHeader>();
+        assert_eq!(0, data.as_ptr().align_offset(alignment));
 
-        unsafe {
-            let reg = self.exefs_region()?;
-            let alignment = mem::align_of::<exefs::ExeFsHeader>();
-            assert_eq!(0, reg.as_ptr().align_offset(alignment));
+        let inner = unsafe { mem::transmute(data) };
 
-            Ok(mem::transmute(reg))
-        }
+        Ok(exefs::ExeFs {
+            compressed: self
+                .exheader()?
+                .sci
+                .flags
+                .contains(ExheaderFlags::COMPRESS_EXEFS_CODE),
+            encrypted: self.is_encrypted(),
+            inner,
+        })
     }
-    pub fn exheader(&self) -> CytrynaResult<&Exheader> {
+    pub fn exheader(&self) -> CytrynaResult<OwnedOrBorrowed<Exheader>> {
         if self.header.exheader_size == 0 {
             return Err(CytrynaError::MissingRegion);
         }
 
-        unsafe {
-            Ok(mem::transmute(
-                self.data[..self.header.exheader_size as usize].as_ptr(),
-            ))
+        // self.header.exheader_size is a fucking lie
+        let exheader_size = mem::size_of::<Exheader>();
+
+        if self.is_encrypted() {
+            let x = KeyBag::global()?.get_key(KeyIndex::Slot(0x2c, KeyType::X))?;
+            let y = &self.header.sig[..0x10];
+
+            let key = crypto::keygen(*x, y.try_into().unwrap())?;
+            let iv: [u8; 0x10] = unsafe {
+                mem::transmute(Aes128Iv {
+                    title_id: self.header.program_id.swap_bytes(),
+                    ty: 1,
+                    pad: [0u8; 7],
+                })
+            };
+
+            let inp = &self.data[..exheader_size as usize];
+            let mut out = vec![0u8; inp.len()].into_boxed_slice();
+            Aes128CtrDec::new(&key.into(), &iv.into())
+                .apply_keystream_b2b(&inp, &mut out)?;
+
+            unsafe {
+                let raw = Box::into_raw(out) as *mut u8 as *mut Exheader;
+                Ok(OwnedOrBorrowed::Owned(Box::from_raw(raw)))
+            }
+        } else {
+            unsafe {
+                Ok(OwnedOrBorrowed::Borrowed(mem::transmute(
+                    self.data[..exheader_size as usize].as_ptr(),
+                )))
+            }
         }
     }
     pub fn romfs_region(&self) -> CytrynaResult<&[u8]> {
@@ -161,6 +197,14 @@ impl Ncch {
         &self.header.flags
     }
 }
+
+#[repr(C)]
+struct Aes128Iv {
+    title_id: u64,
+    ty: u8,
+    pad: [u8; 7],
+}
+assert_eq_size!([u8; 0x10], Aes128Iv);
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -180,7 +224,7 @@ pub struct SystemControlInfo {
     app_title: SizedCString<0x8>,
     #[derivative(Debug = "ignore")]
     _reserved0: [u8; 0x5],
-    exheader_flags: ExheaderFlags,
+    flags: ExheaderFlags,
     remaster_version: u16,
     text_code_set_info: CodeSetInfo,
     stack_size: u32,
@@ -269,7 +313,8 @@ pub enum Old3dsSystemMode {
 pub struct Flag1 {
     pub enable_l2_cache: bool,
     pub cpuspeed_804mhz: bool,
-    #[skip] __: B6,
+    #[skip]
+    __: B6,
 }
 
 #[derive(Debug, Clone)]
@@ -348,27 +393,34 @@ impl Arm11KernelCaps {
 
             let desc = match ones {
                 3 => KernelCap::InterruptInfo,
-                4 => {
-                    KernelCap::EnableSyscalls(SyscallMask::from(val & !0xf0000000))
-                },
+                4 => KernelCap::EnableSyscalls(SyscallMask::from(val & !0xf0000000)),
                 6 => {
                     let val = (val & !0xfc000000).to_le_bytes();
-                    KernelCap::KernelReleaseVersion{major: val[1], minor: val[0]}
-                },
+                    KernelCap::KernelReleaseVersion {
+                        major: val[1],
+                        minor: val[0],
+                    }
+                }
                 7 => KernelCap::HandleTableSize(val & !0xfe000000),
                 8 => KernelCap::KernelFlags(Arm11Flags::from(val & !0xff000000)),
                 9 => {
                     expect_nine = !expect_nine;
-                    
+
                     let bit20 = (val & 1 << 20) != 0;
                     let addr = (val & !0xfff00000) << 16;
 
                     if expect_nine {
-                        KernelCap::MapMemoryRangeStart{read_only: bit20, start: addr}
+                        KernelCap::MapMemoryRangeStart {
+                            read_only: bit20,
+                            start: addr,
+                        }
                     } else {
-                        KernelCap::MapMemoryRangeEnd{cacheable: bit20, end: addr - 1}
+                        KernelCap::MapMemoryRangeEnd {
+                            cacheable: bit20,
+                            end: addr - 1,
+                        }
                     }
-                },
+                }
                 11 => todo!("MapIoMemoryPage"),
                 _ => continue,
             };
@@ -394,11 +446,11 @@ pub struct KernelCapRaw(u32);
 pub enum KernelCap {
     InterruptInfo,
     EnableSyscalls(SyscallMask),
-    KernelReleaseVersion{major: u8, minor: u8},
+    KernelReleaseVersion { major: u8, minor: u8 },
     HandleTableSize(u32),
     KernelFlags(Arm11Flags),
-    MapMemoryRangeStart{read_only: bool, start: u32},
-    MapMemoryRangeEnd{cacheable: bool, end: u32},
+    MapMemoryRangeStart { read_only: bool, start: u32 },
+    MapMemoryRangeEnd { cacheable: bool, end: u32 },
     MapIoMemoryPageStart,
     MapIoMemoryPageEnd,
 }
@@ -409,7 +461,8 @@ pub enum KernelCap {
 pub struct SyscallMask {
     pub mask: B24,
     pub idx: B3,
-    #[skip] __: B5,
+    #[skip]
+    __: B5,
 }
 
 impl SyscallMask {
@@ -442,7 +495,7 @@ impl Iterator for SyscallIter {
         if self.mask_shift > 24 {
             return None;
         }
-        
+
         let num = self.idx * 24 + self.mask_shift;
         let is_enabled = self.mask & (1 << self.mask_shift) != 0;
         Some((num, is_enabled))
@@ -452,9 +505,9 @@ impl Iterator for SyscallIter {
 impl fmt::Debug for SyscallMask {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let idx = self.idx();
-        let syscall = idx*24;
+        let syscall = idx * 24;
         let mut dbg_list = f.debug_list();
-        for num in syscall..syscall+24 {
+        for num in syscall..syscall + 24 {
             if self.has_syscall(num) {
                 dbg_list.entry(&num);
             }
@@ -478,7 +531,8 @@ pub struct Arm11Flags {
     pub memory_type: Arm11MemoryType,
     pub special_memory: bool,
     pub access_core2: bool,
-    #[skip] __: B18,
+    #[skip]
+    __: B18,
 }
 
 #[derive(Debug, Clone, BitfieldSpecifier)]

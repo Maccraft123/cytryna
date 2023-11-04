@@ -11,10 +11,10 @@ fn main() -> anyhow::Result<()> {
     let cia = Cia::from_slice(&data)?;
     let ncch_region = cia.content_region()?.next().unwrap();
     let ncch = Ncch::from_slice(ncch_region.data())?;
-    let exefs = ncch.exefs()?;
-    let icon = exefs.file_by_name(b"icon").unwrap();
+    println!("{:#x?}", ncch.exheader()?);
+    //let icon = exefs.file_by_name(b"icon").unwrap();
 
-    println!("{:#x?}", Smdh::from_slice(icon)?);
+    //println!("{:#x?}", Smdh::from_slice(&icon)?);
     Ok(())
 }
 

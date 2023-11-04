@@ -7,6 +7,8 @@ pub mod ticket;
 pub mod titleid;
 pub mod tmd;
 
+use std::ops::Deref;
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -41,6 +43,8 @@ pub enum CytrynaError {
     },
     #[error("Failed to parse keyindex")]
     KeyIndexFail(#[from] crypto::KeyIndexParseError),
+    #[error("Failed to stream-encrypt/decrypt data")]
+    StreamCrypt(#[from] ctr::cipher::StreamCipherError),
     #[error("Failed to decode hex string")]
     HexError(#[from] hex::FromHexError)
 }
@@ -52,4 +56,42 @@ pub mod prelude {
     pub use crate::ncch::Ncch;
     pub use crate::smdh::Smdh;
     pub use crate::ticket::Ticket;
+}
+
+#[derive(Debug, Clone)]
+pub enum OwnedOrBorrowed<'a, T> {
+    Owned(Box<T>),
+    Borrowed(&'a T),
+}
+
+impl<T> Deref for OwnedOrBorrowed<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        match self {
+            Self::Owned(data) => &(data.as_ref()),
+            Self::Borrowed(data) => data,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum VecOrSlice<'a, T> {
+    V(Vec<T>),
+    S(&'a [T]),
+}
+
+impl<T> VecOrSlice<'_, T> {
+    fn as_slice(&self) -> &[T] {
+        match self {
+            Self::V(vec) => &vec,
+            Self::S(slice) => slice,
+        }
+    }
+}
+
+impl<T> Deref for VecOrSlice<'_, T> {
+    type Target = [T];
+    fn deref(&self) -> &[T] {
+        self.as_slice()
+    }
 }
