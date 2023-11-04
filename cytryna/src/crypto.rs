@@ -27,6 +27,19 @@ impl KeyBag {
             keys: HashMap::new(),
         }
     }
+    pub fn from_string(string: &str) -> Result<Self> {
+        let mut this = Self::new();
+        for line in string.lines() {
+            let line = line.to_lowercase();
+            let Some((left, right)) = line.split_once('=') else { continue };
+            let Some(idx) = KeyIndex::from_str(left) else { continue };
+            let Ok(keyvec) = hex::decode(right) else { continue };
+            let key: [u8; 0x10] = keyvec.try_into().unwrap();
+
+            this.set_key(idx, key);
+        }
+        Ok(this)
+    }
     pub fn set_key(&mut self, idx: KeyIndex, key: [u8; 0x10]) {
         self.keys.insert(idx, key);
     }
@@ -58,6 +71,37 @@ impl fmt::Display for KeyIndex {
             Self::CommonN(num) => format!("common{num}N"),
         };
         f.write_str(&string)
+    }
+}
+
+impl KeyIndex {
+    fn from_str(from: &str) -> Option<Self> {
+        if from == "generator" {
+            return Some(Self::Generator);
+        } else if from.starts_with("slot") {
+            let from = from
+                .trim_start_matches("slot")
+                .trim_start_matches("0x");
+            let num = u8::from_str_radix(&from[..2], 16).unwrap();
+            let keytype = match &from[2..] {
+                "keyx" => KeyType::X,
+                "keyy" => KeyType::Y,
+                "keyn" => KeyType::N,
+                _ => return None,
+            };
+            Some(Self::Slot(num, keytype))
+        } else if from.starts_with("common") {
+            let from = from.trim_start_matches("common");
+            let num = u8::from_str_radix(from.get(0..1).unwrap(), 16).unwrap();
+            let has_n = from.ends_with('n');
+            if has_n {
+                Some(Self::Common(num))
+            } else {
+                Some(Self::CommonN(num))
+            }
+        } else {
+            None
+        }
     }
 }
 
