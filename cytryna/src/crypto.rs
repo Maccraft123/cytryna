@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::marker::PhantomData;
-use std::num;
 use std::mem;
+use std::num;
 use std::str::FromStr;
 use std::sync::OnceLock;
 
@@ -38,11 +38,17 @@ impl KeyBag {
                 continue;
             }
             let line = line.to_lowercase();
-            let Some((left, right)) = line.split_once('=') else { continue };
+            let Some((left, right)) = line.split_once('=') else {
+                continue;
+            };
             let idx: KeyIndex = left.parse()?;
             let keyvec = hex::decode(right)?;
             if keyvec.len() != 0x10 {
-                return Err(CytrynaError::InvalidLength{what: "key", actual: keyvec.len(), expected: 0x10});
+                return Err(CytrynaError::InvalidLength {
+                    what: "key",
+                    actual: keyvec.len(),
+                    expected: 0x10,
+                });
             }
             let key: [u8; 0x10] = keyvec.try_into().unwrap();
 
@@ -101,9 +107,7 @@ impl FromStr for KeyIndex {
         if from == "generator" {
             return Ok(Self::Generator);
         } else if from.starts_with("slot") {
-            let from = from
-                .trim_start_matches("slot")
-                .trim_start_matches("0x");
+            let from = from.trim_start_matches("slot").trim_start_matches("0x");
             let num = u8::from_str_radix(&from[..2], 16)?;
             let keytype = match &from[2..] {
                 "keyx" => KeyType::X,
