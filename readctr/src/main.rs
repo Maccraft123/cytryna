@@ -8,13 +8,15 @@ fn main() -> anyhow::Result<()> {
     let data = std::fs::read(file)?;
 
 
-    let cia = Cia::from_slice(&data)?;
-    let ncch_region = cia.content_region()?.next().unwrap();
-    let ncch = Ncch::from_slice(ncch_region.data())?;
-    println!("{:#x?}", ncch.exheader()?);
-    //let icon = exefs.file_by_name(b"icon").unwrap();
+    //let cia = Cia::from_slice(&data)?;
+    //let ncch_region = cia.content_region()?.next().unwrap();
+    //let ncch = Ncch::from_slice(ncch_region.data())?;
+    let firm = Firm::from_slice(&data)?;
+    println!("{:#x?}", firm.header());
+    if firm.hashes_ok() {
+        println!("yay")
+    }
 
-    //println!("{:#x?}", Smdh::from_slice(&icon)?);
     Ok(())
 }
 

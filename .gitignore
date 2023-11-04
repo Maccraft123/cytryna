@@ -5,6 +5,7 @@
 *.bin
 *.romfs
 *.exefs
+*.firm
 aeskeys.txt
 aes_keys.txt
 /target

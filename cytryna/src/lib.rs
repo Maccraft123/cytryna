@@ -1,5 +1,6 @@
 pub mod cia;
 pub mod crypto;
+pub mod firm;
 pub mod ncch;
 pub mod smdh;
 pub mod string;
@@ -53,6 +54,7 @@ pub type CytrynaResult<T> = std::result::Result<T, CytrynaError>;
 
 pub mod prelude {
     pub use crate::cia::Cia;
+    pub use crate::firm::Firm;
     pub use crate::ncch::Ncch;
     pub use crate::smdh::Smdh;
     pub use crate::ticket::Ticket;

@@ -9,6 +9,7 @@ use std::sync::OnceLock;
 use crate::string::SizedCString;
 use crate::{CytrynaError, CytrynaResult};
 
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 pub mod aes128_ctr {
@@ -162,6 +163,12 @@ impl fmt::Display for KeyType {
 pub trait FromBytes {
     fn bytes_ok(_: &[u8]) -> CytrynaResult<()>;
     fn cast(_: &[u8]) -> &Self;
+}
+
+pub fn sha256(data: &[u8]) -> [u8; 0x20] {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    hasher.finalize().into()
 }
 
 #[repr(C)]
