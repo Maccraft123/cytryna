@@ -3,6 +3,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::num;
 use std::mem;
+use std::str::FromStr;
 use std::sync::OnceLock;
 
 use crate::string::SizedCString;
@@ -38,7 +39,7 @@ impl KeyBag {
             }
             let line = line.to_lowercase();
             let Some((left, right)) = line.split_once('=') else { continue };
-            let idx = KeyIndex::from_str(left)?;
+            let idx: KeyIndex = left.parse()?;
             let keyvec = hex::decode(right)?;
             if keyvec.len() != 0x10 {
                 return Err(CytrynaError::InvalidLength{what: "key", actual: keyvec.len(), expected: 0x10});
@@ -93,7 +94,9 @@ pub enum KeyIndexParseError {
     InvalidKeyXYNType(String),
 }
 
-impl KeyIndex {
+impl FromStr for KeyIndex {
+    type Err = KeyIndexParseError;
+
     fn from_str(from: &str) -> Result<Self, KeyIndexParseError> {
         if from == "generator" {
             return Ok(Self::Generator);
