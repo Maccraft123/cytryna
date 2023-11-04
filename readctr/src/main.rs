@@ -10,7 +10,7 @@ use std::mem;
 
 
 fn main() -> anyhow::Result<()> {
-    KeyBag::from_string(include_str!("aes_keys.txt")).unwrap().finalize();
+    KeyBag::from_string(include_str!("aes_keys.txt"))?.finalize();
 
     let file = std::env::args().nth(1).unwrap();
     let data = std::fs::read(file)?;

@@ -32,6 +32,16 @@ pub enum CytrynaError {
     EnumValueOutOfRange(&'static str),
     #[error("Byte slice passed is too small")]
     SliceTooSmall,
+    #[error("Invalid length of {what}: {actual} (expected {expected})")]
+    InvalidLength{
+        what: &'static str,
+        actual: usize,
+        expected: usize,
+    },
+    #[error("Failed to parse keyindex")]
+    KeyIndexFail(#[from] crypto::KeyIndexParseError),
+    #[error("Failed to decode hex string")]
+    HexError(#[from] hex::FromHexError)
 }
 
-pub type Result<T> = std::result::Result<T, CytrynaError>;
+pub type CytrynaResult<T> = std::result::Result<T, CytrynaError>;

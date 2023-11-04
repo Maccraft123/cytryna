@@ -2,7 +2,7 @@ use std::mem;
 
 use crate::crypto::{aes128_ctr::*, FromBytes, KeyBag, KeyIndex, SignedData};
 use crate::titleid::MaybeTitleIdBe;
-use crate::Result;
+use crate::CytrynaResult;
 
 use derivative::Derivative;
 use redox_simple_endian::*;
@@ -42,7 +42,7 @@ pub struct TicketInner {
 }
 
 impl FromBytes for TicketInner {
-    fn bytes_ok(_: &[u8]) -> Result<()> {
+    fn bytes_ok(_: &[u8]) -> CytrynaResult<()> {
         Ok(())
     }
     fn cast(bytes: &[u8]) -> &Self {
@@ -53,7 +53,7 @@ impl FromBytes for TicketInner {
 pub type Ticket<'a> = SignedData<'a, TicketInner>;
 
 impl Ticket<'_> {
-    pub fn title_key(&self) -> Result<[u8; 0x10]> {
+    pub fn title_key(&self) -> CytrynaResult<[u8; 0x10]> {
         let mut iv = [0u8; 0x10];
         iv[..0x8].copy_from_slice(&self.data().title_id.to_bytes());
 

@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::{CytrynaError, Result};
+use crate::{CytrynaError, CytrynaResult};
 use bitflags::bitflags;
 use static_assertions::assert_eq_size;
 
@@ -11,7 +11,7 @@ pub struct MaybeTitleId {
 }
 
 impl MaybeTitleId {
-    pub fn to_titleid(self) -> Result<TitleId> {
+    pub fn to_titleid(self) -> CytrynaResult<TitleId> {
         TitleId::from_u64(self.raw)
     }
 }
@@ -23,7 +23,7 @@ pub struct MaybeTitleIdBe {
 }
 
 impl MaybeTitleIdBe {
-    pub fn to_titleid(self) -> Result<TitleId> {
+    pub fn to_titleid(self) -> CytrynaResult<TitleId> {
         TitleId::from_u64(self.raw.swap_bytes())
     }
     pub fn to_le(self) -> MaybeTitleId {
@@ -52,7 +52,7 @@ impl TitleId {
     pub fn to_u64(self) -> u64 {
         unsafe { mem::transmute(self) }
     }
-    pub fn from_u64(what: u64) -> Result<TitleId> {
+    pub fn from_u64(what: u64) -> CytrynaResult<TitleId> {
         let platform = (what & 0x0000_0000_0000_ffff) as u16;
 
         if platform >= 6 {

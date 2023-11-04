@@ -8,7 +8,7 @@ use crate::smdh::Smdh;
 use crate::ticket::Ticket;
 use crate::titleid::{MaybeTitleId, TitleId};
 use crate::tmd::{self, ContentIndex, Tmd};
-use crate::{CytrynaError, Result};
+use crate::{CytrynaError, CytrynaResult};
 
 const fn align(what: u32) -> usize {
     if what % 0x40 != 0 {
@@ -45,7 +45,7 @@ pub struct Cia {
 }
 
 impl Cia {
-    fn looks_ok(&self) -> Result<()> {
+    fn looks_ok(&self) -> CytrynaResult<()> {
         if self.header.hdr_size != mem::size_of::<CiaHeader>() as u32 {
             Err(CytrynaError::InvalidHeaderSize)
         } else {
@@ -55,7 +55,7 @@ impl Cia {
     pub fn header(&self) -> &CiaHeader {
         &self.header
     }
-    pub fn from_slice(what: &[u8]) -> Result<&Self> {
+    pub fn from_slice(what: &[u8]) -> CytrynaResult<&Self> {
         let alignment = mem::align_of::<CiaHeader>();
         assert_eq!(0, what.as_ptr().align_offset(alignment));
 
@@ -67,17 +67,17 @@ impl Cia {
     pub fn cert_chain_region(&self) -> &[u8] {
         &self.data[..align(self.header.cert_size)]
     }
-    pub fn ticket_region(&self) -> Result<Ticket> {
+    pub fn ticket_region(&self) -> CytrynaResult<Ticket> {
         let offset = align(self.header.cert_size);
         Ticket::from_bytes(&self.data[offset..][..align(self.header.ticket_size)])
     }
-    pub fn tmd_region(&self) -> Result<Tmd> {
+    pub fn tmd_region(&self) -> CytrynaResult<Tmd> {
         let offset =
             align(self.header.cert_size) + align(self.header.ticket_size);
         //Some(unsafe { mem::transmute(&self.data[offset..][..align(self.header.tmd_size)]) })
         Tmd::from_bytes(&self.data[offset..][..align(self.header.tmd_size)])
     }
-    pub fn content_region(&self) -> Result<ContentRegionIter> {
+    pub fn content_region(&self) -> CytrynaResult<ContentRegionIter> {
         let offset = align(self.header.cert_size)
             + align(self.header.ticket_size)
             + align(self.header.tmd_size);
@@ -184,7 +184,7 @@ impl MetaRegion {
         let copy = self.dependencies;
         copy.into_iter().filter_map(|v| v.to_titleid().ok())
     }
-    pub fn icon(&self) -> Result<&Smdh> {
+    pub fn icon(&self) -> CytrynaResult<&Smdh> {
         Smdh::from_slice(&self.icon)
     }
 }

@@ -2,7 +2,7 @@ use std::{fmt, mem, ptr, slice};
 
 use crate::crypto::{FromBytes, SignedData};
 use crate::titleid::{MaybeTitleIdBe, TitleId};
-use crate::Result;
+use crate::CytrynaResult;
 
 use bitflags::bitflags;
 use derivative::Derivative;
@@ -43,7 +43,7 @@ pub struct TmdInner {
 
 impl FromBytes for TmdInner {
     // TODO: check validity of content indexes
-    fn bytes_ok(_: &[u8]) -> Result<()> {
+    fn bytes_ok(_: &[u8]) -> CytrynaResult<()> {
         Ok(())
     }
     fn cast(bytes: &[u8]) -> &Self {
@@ -54,7 +54,7 @@ impl FromBytes for TmdInner {
 pub type Tmd<'a> = SignedData<'a, TmdInner>;
 
 impl<'a> Tmd<'a> {
-    pub fn title_id(&self) -> Result<TitleId> {
+    pub fn title_id(&self) -> CytrynaResult<TitleId> {
         self.data().title_id.to_titleid()
     }
     pub fn content_count(&self) -> u16 {

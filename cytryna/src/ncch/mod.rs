@@ -6,7 +6,7 @@ use std::os::raw::c_char;
 
 use crate::string::SizedCString;
 use crate::titleid::MaybeTitleId;
-use crate::{CytrynaError, Result};
+use crate::{CytrynaError, CytrynaResult};
 
 use modular_bitfield::prelude::*;
 use bitflags::bitflags;
@@ -99,7 +99,7 @@ impl Ncch {
     pub fn header(&self) -> &NcchHeader {
         &self.header
     }
-    pub fn from_slice(what: &[u8]) -> Result<&Self> {
+    pub fn from_slice(what: &[u8]) -> CytrynaResult<&Self> {
         let alignment = mem::align_of::<NcchHeader>();
         assert_eq!(0, what.as_ptr().align_offset(alignment));
 
@@ -112,7 +112,7 @@ impl Ncch {
     pub fn is_encrypted(&self) -> bool {
         !self.header.flags.options.contains(NcchFlagsOptions::NO_CRYPTO)
     }
-    fn region(&self, offset: u32, size: u32) -> Result<&[u8]> {
+    fn region(&self, offset: u32, size: u32) -> CytrynaResult<&[u8]> {
         if offset == 0 || size == 0 {
             return Err(CytrynaError::MissingRegion);
         }
@@ -121,16 +121,16 @@ impl Ncch {
         let size = size as usize * 0x200;
         Ok(&self.data[offset..][..size])
     }
-    pub fn plain_region(&self) -> Result<&[u8]> {
+    pub fn plain_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.plain_offset, self.header.plain_size)
     }
-    pub fn logo_region(&self) -> Result<&[u8]> {
+    pub fn logo_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.logo_offset, self.header.logo_size)
     }
-    pub fn exefs_region(&self) -> Result<&[u8]> {
+    pub fn exefs_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.exefs_offset, self.header.exefs_size)
     }
-    pub fn exefs(&self) -> Result<&exefs::ExeFs> {
+    pub fn exefs(&self) -> CytrynaResult<&exefs::ExeFs> {
         if self.is_encrypted() {
             todo!("exefs decryption");
         }
@@ -143,7 +143,7 @@ impl Ncch {
             Ok(mem::transmute(reg))
         }
     }
-    pub fn exheader(&self) -> Result<&Exheader> {
+    pub fn exheader(&self) -> CytrynaResult<&Exheader> {
         if self.header.exheader_size == 0 {
             return Err(CytrynaError::MissingRegion);
         }
@@ -154,7 +154,7 @@ impl Ncch {
             ))
         }
     }
-    pub fn romfs_region(&self) -> Result<&[u8]> {
+    pub fn romfs_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.romfs_offset, self.header.romfs_size)
     }
     pub fn flags(&self) -> &NcchFlags {

@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::marker::PhantomData;
+use std::num;
 use std::mem;
 use std::sync::OnceLock;
 
 use crate::string::SizedCString;
-use crate::{CytrynaError, Result};
+use crate::{CytrynaError, CytrynaResult};
+
+use thiserror::Error;
 
 pub mod aes128_ctr {
     pub use aes::cipher::block_padding::NoPadding;
@@ -27,13 +30,19 @@ impl KeyBag {
             keys: HashMap::new(),
         }
     }
-    pub fn from_string(string: &str) -> Result<Self> {
+    pub fn from_string(string: &str) -> CytrynaResult<Self> {
         let mut this = Self::new();
         for line in string.lines() {
+            if line.starts_with("#") {
+                continue;
+            }
             let line = line.to_lowercase();
             let Some((left, right)) = line.split_once('=') else { continue };
-            let Some(idx) = KeyIndex::from_str(left) else { continue };
-            let Ok(keyvec) = hex::decode(right) else { continue };
+            let idx = KeyIndex::from_str(left)?;
+            let keyvec = hex::decode(right)?;
+            if keyvec.len() != 0x10 {
+                return Err(CytrynaError::InvalidLength{what: "key", actual: keyvec.len(), expected: 0x10});
+            }
             let key: [u8; 0x10] = keyvec.try_into().unwrap();
 
             this.set_key(idx, key);
@@ -46,10 +55,10 @@ impl KeyBag {
     pub fn finalize(self) {
         let _ = KEY_BAG.set(self);
     }
-    pub fn get_key(&self, idx: KeyIndex) -> Result<&[u8; 0x10]> {
+    pub fn get_key(&self, idx: KeyIndex) -> CytrynaResult<&[u8; 0x10]> {
         self.keys.get(&idx).ok_or(CytrynaError::MissingKey(idx))
     }
-    pub fn global() -> Result<&'static Self> {
+    pub fn global() -> CytrynaResult<&'static Self> {
         KEY_BAG.get().ok_or(CytrynaError::NoKeyBag)
     }
 }
@@ -74,33 +83,43 @@ impl fmt::Display for KeyIndex {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum KeyIndexParseError {
+    #[error("Failed to parse a hex number")]
+    NumberParseError(#[from] num::ParseIntError),
+    #[error("Invalid key type \"{0}\"")]
+    InvalidKeyType(String),
+    #[error("Invalid X/Y/Z key type \"{0}\"")]
+    InvalidKeyXYNType(String),
+}
+
 impl KeyIndex {
-    fn from_str(from: &str) -> Option<Self> {
+    fn from_str(from: &str) -> Result<Self, KeyIndexParseError> {
         if from == "generator" {
-            return Some(Self::Generator);
+            return Ok(Self::Generator);
         } else if from.starts_with("slot") {
             let from = from
                 .trim_start_matches("slot")
                 .trim_start_matches("0x");
-            let num = u8::from_str_radix(&from[..2], 16).unwrap();
+            let num = u8::from_str_radix(&from[..2], 16)?;
             let keytype = match &from[2..] {
                 "keyx" => KeyType::X,
                 "keyy" => KeyType::Y,
                 "keyn" => KeyType::N,
-                _ => return None,
+                _ => return Err(KeyIndexParseError::InvalidKeyXYNType(from[2..].to_string())),
             };
-            Some(Self::Slot(num, keytype))
+            Ok(Self::Slot(num, keytype))
         } else if from.starts_with("common") {
             let from = from.trim_start_matches("common");
-            let num = u8::from_str_radix(from.get(0..1).unwrap(), 16).unwrap();
+            let num = u8::from_str_radix(from.get(0..1).unwrap(), 16)?;
             let has_n = from.ends_with('n');
             if has_n {
-                Some(Self::Common(num))
+                Ok(Self::Common(num))
             } else {
-                Some(Self::CommonN(num))
+                Ok(Self::CommonN(num))
             }
         } else {
-            None
+            Err(KeyIndexParseError::InvalidKeyType(from.to_string()))
         }
     }
 }
@@ -124,7 +143,7 @@ impl fmt::Display for KeyType {
 }
 
 pub trait FromBytes {
-    fn bytes_ok(_: &[u8]) -> Result<()>;
+    fn bytes_ok(_: &[u8]) -> CytrynaResult<()>;
     fn cast(_: &[u8]) -> &Self;
 }
 
@@ -178,7 +197,7 @@ where
 }
 
 impl<T: ?Sized + FromBytes + fmt::Debug> SignedData<'_, T> {
-    pub fn from_bytes(bytes: &[u8]) -> Result<SignedData<T>> {
+    pub fn from_bytes(bytes: &[u8]) -> CytrynaResult<SignedData<T>> {
         unsafe {
             if bytes[0] != 0x0
                 || bytes[1] != 0x1

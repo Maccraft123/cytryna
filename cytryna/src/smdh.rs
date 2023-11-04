@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::string::SizedCStringUtf16;
-use crate::{CytrynaError, Result};
+use crate::{CytrynaError, CytrynaResult};
 
 use bitflags::bitflags;
 use derivative::Derivative;
@@ -41,7 +41,7 @@ pub struct EulaVersion {
 }
 
 impl Smdh {
-    pub fn from_slice(slice: &[u8]) -> Result<&Self> {
+    pub fn from_slice(slice: &[u8]) -> CytrynaResult<&Self> {
         if slice.len() < mem::size_of::<Smdh>() {
             return Err(CytrynaError::SliceTooSmall);
         }
@@ -247,12 +247,12 @@ impl<const SIZE: usize> IconData<SIZE> {
 impl<const SIZE: usize> ImageDrawable for IconData<SIZE> {
     type Color = Rgb565;
 
-    fn draw<D>(&self, target: &mut D) -> Result<(), D::Error>
+    fn draw<D>(&self, target: &mut D) -> CytrynaResult<(), D::Error>
         where D: DrawTarget<Color = Self::Color>
     {
         todo!()
     }
-    fn draw_sub_image<D>(&self, target: &mut D, area: &Rectangle) -> Result<(), D::Error>
+    fn draw_sub_image<D>(&self, target: &mut D, area: &Rectangle) -> CytrynaResult<(), D::Error>
         where D: DrawTarget<Color = Self::Color>
     {
         todo!()
