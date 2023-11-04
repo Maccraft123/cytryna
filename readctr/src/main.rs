@@ -1,13 +1,5 @@
-use cytryna::{
-    ncch::Ncch,
-    cia::Cia,
-    smdh::{Smdh, Language},
-    crypto::{KeyBag, KeyIndex},
-    ncch,
-};
-use std::mem;
-
-
+use cytryna::prelude::*;
+use cytryna::crypto::KeyBag;
 
 fn main() -> anyhow::Result<()> {
     KeyBag::from_string(include_str!("aes_keys.txt"))?.finalize();

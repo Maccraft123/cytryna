@@ -8,6 +8,7 @@ pub mod titleid;
 pub mod tmd;
 
 use thiserror::Error;
+
 #[derive(Error, Debug)]
 pub enum CytrynaError {
     #[error("Invalid magic bytes")]
@@ -45,3 +46,10 @@ pub enum CytrynaError {
 }
 
 pub type CytrynaResult<T> = std::result::Result<T, CytrynaError>;
+
+pub mod prelude {
+    pub use crate::cia::Cia;
+    pub use crate::ncch::Ncch;
+    pub use crate::smdh::Smdh;
+    pub use crate::ticket::Ticket;
+}
