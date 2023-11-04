@@ -107,7 +107,6 @@ impl Ncch {
         }
         Ok(me)
     }
-    // TODO: when are regions absent?
     fn region(&self, offset: u32, size: u32) -> Result<&[u8]> {
         if offset == 0 || size == 0 {
             return Err(CytrynaError::MissingRegion);

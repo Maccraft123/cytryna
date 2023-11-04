@@ -10,7 +10,7 @@ use crate::titleid::{MaybeTitleId, TitleId};
 use crate::tmd::{self, ContentIndex, Tmd};
 use crate::{CytrynaError, Result};
 
-fn align(what: u32) -> usize {
+const fn align(what: u32) -> usize {
     if what % 0x40 != 0 {
         (what + (0x40 - (what % 0x40))) as usize
     } else {
@@ -35,9 +35,12 @@ pub struct CiaHeader {
 }
 assert_eq_size!([u8; 0x2020], CiaHeader);
 
+const HDR_PAD: usize = align(mem::size_of::<CiaHeader>() as u32) - mem::size_of::<CiaHeader>();
+
 #[repr(C)]
 pub struct Cia {
     header: CiaHeader,
+    pad: [u8; HDR_PAD],
     data: [u8],
 }
 
@@ -52,11 +55,6 @@ impl Cia {
     pub fn header(&self) -> &CiaHeader {
         &self.header
     }
-    fn hdr_offset() -> usize {
-        // including alignment, however, self.data doesn't include header
-        // so we have to subtract unaligned header size
-        align(mem::size_of::<CiaHeader>() as u32) - mem::size_of::<CiaHeader>()
-    }
     pub fn from_slice(what: &[u8]) -> Result<&Self> {
         let alignment = mem::align_of::<CiaHeader>();
         assert_eq!(0, what.as_ptr().align_offset(alignment));
@@ -67,21 +65,20 @@ impl Cia {
     }
 
     pub fn cert_chain_region(&self) -> &[u8] {
-        &self.data[Self::hdr_offset()..][..align(self.header.cert_size)]
+        &self.data[..align(self.header.cert_size)]
     }
     pub fn ticket_region(&self) -> Result<Ticket> {
-        let offset = Self::hdr_offset() + align(self.header.cert_size);
+        let offset = align(self.header.cert_size);
         Ticket::from_bytes(&self.data[offset..][..align(self.header.ticket_size)])
     }
     pub fn tmd_region(&self) -> Result<Tmd> {
         let offset =
-            Self::hdr_offset() + align(self.header.cert_size) + align(self.header.ticket_size);
+            align(self.header.cert_size) + align(self.header.ticket_size);
         //Some(unsafe { mem::transmute(&self.data[offset..][..align(self.header.tmd_size)]) })
         Tmd::from_bytes(&self.data[offset..][..align(self.header.tmd_size)])
     }
     pub fn content_region(&self) -> Result<ContentRegionIter> {
-        let offset = Self::hdr_offset()
-            + align(self.header.cert_size)
+        let offset = align(self.header.cert_size)
             + align(self.header.ticket_size)
             + align(self.header.tmd_size);
         let title_key = self.ticket_region()?.title_key()?;
@@ -96,8 +93,7 @@ impl Cia {
     }
     pub fn meta_region(&self) -> Option<&MetaRegion> {
         if self.header.meta_size != 0 {
-            let offset = Self::hdr_offset()
-                + align(self.header.cert_size)
+            let offset = align(self.header.cert_size)
                 + align(self.header.ticket_size)
                 + align(self.header.tmd_size)
                 + align(self.header.content_size as u32);
