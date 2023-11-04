@@ -78,7 +78,9 @@ pub fn keygen(x: [u8; 0x10], y: [u8; 0x10]) -> CytrynaResult<[u8; 0x10]> {
     let y = u128::from_be_bytes(y);
     let gen = u128::from_be_bytes(*KeyBag::global()?.get_key(KeyIndex::Generator)?);
 
-    Ok(((x.rotate_left(2) ^ y) + gen).rotate_right(41).to_be_bytes())
+    Ok(((x.rotate_left(2) ^ y) + gen)
+        .rotate_right(41)
+        .to_be_bytes())
 }
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
@@ -295,3 +297,34 @@ pub struct EcdsaSha256 {
 }
 impl Sealed for EcdsaSha256 {}
 impl Signature for EcdsaSha256 {}
+
+#[cfg(test)]
+mod tests {
+    use super::{KeyBag, KeyIndex};
+    #[test]
+    fn test_keygen() {
+        // https://www.random.org/cgi-bin/randbyte?nbytes=16&format=h
+        const RANDOM_GENERATOR: [u8; 0x10] = [
+            0x12, 0x59, 0x9a, 0x14, 0xff, 0x66, 0xda, 0x9f, 0x65, 0xc1, 0x3e, 0xad, 0x30, 0x50,
+            0x15, 0xc7,
+        ];
+        const RANDOM_X: [u8; 0x10] = [
+            0xfa, 0xfe, 0x20, 0x7b, 0xb2, 0x3c, 0xa4, 0x30, 0x16, 0x2a, 0x65, 0xf6, 0xd3, 0xff,
+            0x50, 0x40,
+        ];
+        const RANDOM_Y: [u8; 0x10] = [
+            0x82, 0x48, 0x62, 0xde, 0xd5, 0xc6, 0xd5, 0x99, 0x23, 0x05, 0x19, 0xf5, 0x2d, 0x27,
+            0x56, 0xa8,
+        ];
+        const REFERENCE_KEY: [u8; 0x10] = [
+            0x6d, 0xc9, 0x95, 0x16, 0xb9, 0x3e, 0x05, 0x3e, 0xa2, 0x8e, 0x4d, 0x8f, 0xfc, 0x70,
+            0xb6, 0xe6,
+        ];
+
+        let mut bag = KeyBag::new();
+        bag.set_key(KeyIndex::Generator, RANDOM_GENERATOR);
+        bag.finalize();
+
+        assert_eq!(super::keygen(RANDOM_X, RANDOM_Y).unwrap(), REFERENCE_KEY);
+    }
+}
