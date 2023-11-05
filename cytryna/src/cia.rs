@@ -64,12 +64,15 @@ impl FromBytes for Cia {
 }
 
 impl Cia {
+    #[must_use]
     pub fn header(&self) -> &CiaHeader {
         &self.header
     }
+    #[must_use]
     pub fn cert_chain_region(&self) -> &[u8] {
         &self.data[..align(self.header.cert_size)]
     }
+    #[must_use]
     pub fn ticket_region(&self) -> CytrynaResult<Ticket> {
         let offset = align(self.header.cert_size);
         Ticket::from_bytes(&self.data[offset..][..align(self.header.ticket_size)])
@@ -80,6 +83,7 @@ impl Cia {
         //Some(unsafe { mem::transmute(&self.data[offset..][..align(self.header.tmd_size)]) })
         Tmd::from_bytes(&self.data[offset..][..align(self.header.tmd_size)])
     }
+    #[must_use]
     pub fn content_region(&self) -> CytrynaResult<ContentRegionIter> {
         let offset = align(self.header.cert_size)
             + align(self.header.ticket_size)
@@ -94,6 +98,7 @@ impl Cia {
             chunk_idx: 0,
         })
     }
+    #[must_use]
     pub fn meta_region(&self) -> Option<&MetaRegion> {
         if self.header.meta_size != 0 {
             let offset = align(self.header.cert_size)
@@ -117,7 +122,9 @@ pub struct ContentRegion<'a> {
 }
 
 impl ContentRegion<'_> {
-    pub fn data(&self) -> &[u8] { &self.data.as_slice() }
+    #[must_use]
+    pub fn data(&self) -> &[u8] { self.data.as_slice() }
+    #[must_use]
     pub fn idx(&self) -> ContentIndex {
         self.idx
     }
@@ -170,13 +177,16 @@ pub struct MetaRegion {
 assert_eq_size!([u8; 0x3ac0], MetaRegion);
 
 impl MetaRegion {
+    #[must_use]
     pub fn dependencies(&self) -> [MaybeTitleId; 0x30] {
         self.dependencies
     }
+    #[must_use]
     pub fn dependencies_iter(&self) -> impl Iterator<Item = TitleId> {
         let copy = self.dependencies;
         copy.into_iter().filter_map(|v| v.to_titleid().ok())
     }
+    #[must_use]
     pub fn icon(&self) -> CytrynaResult<&Smdh> {
         Smdh::from_bytes(&self.icon)
     }

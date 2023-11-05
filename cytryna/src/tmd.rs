@@ -57,13 +57,15 @@ impl FromBytes for TmdInner {
 pub type Tmd<'a> = SignedData<'a, TmdInner>;
 
 impl<'a> Tmd<'a> {
+    #[must_use]
     pub fn title_id(&self) -> CytrynaResult<TitleId> {
         self.data().title_id.to_titleid()
     }
+    #[must_use]
     pub fn content_count(&self) -> u16 {
         u16::from_be_bytes(self.data().content_count)
     }
-
+    #[must_use]
     pub fn content_chunks(&self) -> &[ContentChunk] {
         let ptr = ptr::addr_of!(self.data().content_chunk_records);
         let amount = self.content_count();
@@ -97,21 +99,27 @@ pub struct ContentChunk {
 assert_eq_size!([u8; 0x30], ContentChunk);
 
 impl ContentChunk {
+    #[must_use]
     pub fn id(&self) -> u32 {
         u32::from_be_bytes(self.id)
     }
+    #[must_use]
     pub fn idx(&self) -> ContentIndex {
         self.idx
     }
+    #[must_use]
     pub fn ty(&self) -> ContentType {
         ContentType::from_bits_retain(u16::from_be_bytes(self.ty))
     }
+    #[must_use]
     pub fn size(&self) -> u64 {
         u64::from_be_bytes(self.size)
     }
+    #[must_use]
     pub fn hash(&self) -> &[u8; 0x20] {
         &self.hash
     }
+    #[must_use]
     pub fn is_nil(&self) -> bool {
         self.ty == [0, 0] && self.size == [0; 8] && self.hash.iter().all(|v| *v == 0)
     }

@@ -11,6 +11,7 @@ pub struct MaybeTitleId {
 }
 
 impl MaybeTitleId {
+    #[must_use]
     pub fn to_titleid(self) -> CytrynaResult<TitleId> {
         TitleId::from_u64(self.raw)
     }
@@ -23,14 +24,17 @@ pub struct MaybeTitleIdBe {
 }
 
 impl MaybeTitleIdBe {
+    #[must_use]
     pub fn to_titleid(self) -> CytrynaResult<TitleId> {
         TitleId::from_u64(self.raw.swap_bytes())
     }
+    #[must_use]
     pub fn to_le(self) -> MaybeTitleId {
         MaybeTitleId {
             raw: self.raw.swap_bytes(),
         }
     }
+    #[must_use]
     pub fn to_bytes(self) -> [u8; 8] {
         unsafe { mem::transmute(self) }
     }
@@ -46,12 +50,15 @@ pub struct TitleId {
 assert_eq_size!(u64, TitleId);
 
 impl TitleId {
+    #[must_use]
     pub fn is_null(&self) -> bool {
         self.to_u64() == 0
     }
+    #[must_use]
     pub fn to_u64(self) -> u64 {
         unsafe { mem::transmute(self) }
     }
+    #[must_use]
     pub fn from_u64(what: u64) -> CytrynaResult<TitleId> {
         let platform = (what & 0x0000_0000_0000_ffff) as u16;
 
@@ -61,12 +68,15 @@ impl TitleId {
 
         Ok(unsafe { mem::transmute(what) })
     }
+    #[must_use]
     pub fn id(&self) -> u32 {
         self.id
     }
+    #[must_use]
     pub fn category(&self) -> Category {
         self.category
     }
+    #[must_use]
     pub fn plat(&self) -> Platform {
         self.plat
     }

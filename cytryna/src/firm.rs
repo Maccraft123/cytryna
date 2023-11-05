@@ -26,14 +26,16 @@ pub struct FirmHeader {
 assert_eq_size!([u8; 0x200], FirmHeader);
 
 impl FirmHeader {
-    pub fn boot_priority(&self) -> u32 { self.boot_priority }
-    pub fn arm11_entrypoint(&self) -> u32 { self.arm11_entrypoint }
-    pub fn arm9_entrypoint(&self) -> u32 { self.arm9_entrypoint }
-    pub fn sections(&self) -> &[SectionHeader; 4] { &self.firmware_section_headers }
+    #[must_use] pub fn boot_priority(&self) -> u32 { self.boot_priority }
+    #[must_use] pub fn arm11_entrypoint(&self) -> u32 { self.arm11_entrypoint }
+    #[must_use] pub fn arm9_entrypoint(&self) -> u32 { self.arm9_entrypoint }
+    #[must_use] pub fn sections(&self) -> &[SectionHeader; 4] { &self.firmware_section_headers }
+    #[must_use]
     pub fn section_iter(&self) -> impl Iterator<Item = &SectionHeader> {
         self.firmware_section_headers.iter()
             .filter(|section| section.size != 0)
     }
+    #[must_use]
     pub fn is_sighaxed(&self) -> bool {
         self.rsa2048_sig == SIGHAX
     }
@@ -90,10 +92,12 @@ impl FromBytes for Firm {
 }
 
 impl Firm {
+    #[must_use]
     pub fn section_data(&self, section: &SectionHeader) -> &[u8] {
         let offset = section.offset as usize - mem::size_of::<FirmHeader>();
         &self.data[offset..][..section.size as usize]
     }
+    #[must_use]
     pub fn header(&self) -> &FirmHeader {
         &self.header
     }

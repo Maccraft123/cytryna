@@ -57,27 +57,35 @@ impl FromBytes for Smdh {
 }
 
 impl Smdh {
+    #[must_use]
     pub fn title(&self, lang: Language) -> &SmdhTitle {
         &self.titles[lang as usize]
     }
+    #[must_use]
     pub fn age_rating(&self, region: AgeRatingRegion) -> AgeRating {
         self.age_ratings[region as usize]
     }
+    #[must_use]
     pub fn region_lockout(&self) -> RegionLockout {
         self.region_lockout
     }
+    #[must_use]
     pub fn matchmaker_id(&self) -> &MatchmakerId {
         &self.matchmaker_id
     }
+    #[must_use]
     pub fn flags(&self) -> SmdhFlags {
         self.flags
     }
+    #[must_use]
     pub fn eula_version(&self) -> &EulaVersion {
         &self.eula_version
     }
+    #[must_use]
     pub fn optimal_animation_default_frame(&self) -> f32 {
         self.optimal_animation_default_frame
     }
+    #[must_use]
     pub fn cec_id(&self) -> u32 {
         self.cec_id
     }
@@ -145,9 +153,11 @@ pub struct MatchmakerId {
 assert_eq_size!([u8; 0xc], MatchmakerId);
 
 impl MatchmakerId {
+    #[must_use]
     pub fn id(&self) -> u32 {
         self.id
     }
+    #[must_use]
     pub fn bit_id(&self) -> u64 {
         self.bit_id
     }
@@ -180,12 +190,15 @@ pub struct SmdhTitle {
 assert_eq_size!([u8; 0x200], SmdhTitle);
 
 impl SmdhTitle {
+    #[must_use]
     pub fn short_desc(&self) -> &SizedCStringUtf16<0x40> {
         &self.short_desc
     }
+    #[must_use]
     pub fn long_desc(&self) -> &SizedCStringUtf16<0x80> {
         &self.long_desc
     }
+    #[must_use]
     pub fn publisher(&self) -> &SizedCStringUtf16<0x40> {
         &self.publisher
     }
@@ -205,6 +218,7 @@ pub struct IconData<const SIZE: usize> {
 }
 
 impl<const SIZE: usize> IconData<SIZE> {
+    #[must_use]
     pub fn raw_data(&self) -> &[u16; SIZE] {
         &self.data
     }

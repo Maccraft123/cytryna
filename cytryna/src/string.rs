@@ -5,15 +5,19 @@ use std::{borrow::Cow, fmt, str, string};
 pub struct SizedCString<const SIZE: usize>([u8; SIZE]);
 
 impl<const SIZE: usize> SizedCString<SIZE> {
+    #[must_use]
     pub fn as_str(&self) -> Result<&str, str::Utf8Error> {
         str::from_utf8(&self.0)
     }
+    #[must_use]
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(&self.0)
     }
+    #[must_use]
     pub fn is_zero(&self) -> bool {
         self.0.iter().all(|v| *v == 0)
     }
+    #[must_use]
     pub fn data(&self) -> &[u8] {
         &self.0
     }
@@ -26,15 +30,19 @@ pub struct SizedCStringUtf16<const SIZE: usize> {
 }
 
 impl<const SIZE: usize> SizedCStringUtf16<SIZE> {
+    #[must_use]
     pub fn to_string(&self) -> Result<String, string::FromUtf16Error> {
         String::from_utf16(&self.data)
     }
+    #[must_use]
     pub fn to_string_lossy(&self) -> String {
         String::from_utf16_lossy(&self.data)
     }
+    #[must_use]
     pub fn is_zero(&self) -> bool {
         self.data.iter().all(|v| *v == 0)
     }
+    #[must_use]
     pub fn data(&self) -> &[u16] {
         &self.data
     }

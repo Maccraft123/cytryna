@@ -29,15 +29,17 @@ pub struct KeyBag {
 }
 
 impl KeyBag {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             keys: HashMap::new(),
         }
     }
+    #[must_use]
     pub fn from_string(string: &str) -> CytrynaResult<Self> {
         let mut this = Self::new();
         for line in string.lines() {
-            if line.starts_with("#") {
+            if line.starts_with('#') {
                 continue;
             }
             let line = line.to_lowercase();
@@ -65,14 +67,17 @@ impl KeyBag {
     pub fn finalize(self) {
         let _ = KEY_BAG.set(self);
     }
+    #[must_use]
     pub fn get_key(&self, idx: KeyIndex) -> CytrynaResult<&[u8; 0x10]> {
         self.keys.get(&idx).ok_or(CytrynaError::MissingKey(idx))
     }
+    #[must_use]
     pub fn global() -> CytrynaResult<&'static Self> {
         KEY_BAG.get().ok_or(CytrynaError::NoKeyBag)
     }
 }
 
+#[must_use]
 pub fn keygen(x: [u8; 0x10], y: [u8; 0x10]) -> CytrynaResult<[u8; 0x10]> {
     let x = u128::from_be_bytes(x);
     let y = u128::from_be_bytes(y);
@@ -118,7 +123,7 @@ impl FromStr for KeyIndex {
 
     fn from_str(from: &str) -> Result<Self, KeyIndexParseError> {
         if from == "generator" {
-            return Ok(Self::Generator);
+            Ok(Self::Generator)
         } else if from.starts_with("slot") {
             let from = from.trim_start_matches("slot").trim_start_matches("0x");
             let num = u8::from_str_radix(&from[..2], 16)?;
@@ -178,6 +183,7 @@ pub struct SignedDataInner<T: ?Sized + FromBytes + fmt::Debug, S: Signature> {
 }
 
 impl<T: ?Sized + FromBytes + fmt::Debug, S: Signature> SignedDataInner<T, S> {
+    #[must_use]
     pub fn data(&self) -> &T {
         T::cast(&self.data)
     }
@@ -218,6 +224,7 @@ where
 }
 
 impl<T: ?Sized + FromBytes + fmt::Debug> SignedData<'_, T> {
+    #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> CytrynaResult<SignedData<T>> {
         unsafe {
             if bytes[0] != 0x0
@@ -247,6 +254,7 @@ impl<T: ?Sized + FromBytes + fmt::Debug> SignedData<'_, T> {
             }
         }
     }
+    #[must_use]
     pub fn data(&self) -> &T {
         match self {
             Self::Rsa4096Sha256(inner) => T::cast(&inner.data),

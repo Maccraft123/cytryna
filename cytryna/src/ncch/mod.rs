@@ -97,9 +97,11 @@ pub struct Ncch {
 }
 
 impl Ncch {
+    #[must_use]
     pub fn header(&self) -> &NcchHeader {
         &self.header
     }
+    #[must_use]
     pub fn from_slice(what: &[u8]) -> CytrynaResult<&Self> {
         let alignment = mem::align_of::<NcchHeader>();
         assert_eq!(0, what.as_ptr().align_offset(alignment));
@@ -110,6 +112,7 @@ impl Ncch {
         }
         Ok(me)
     }
+    #[must_use]
     pub fn is_encrypted(&self) -> bool {
         !self
             .header
@@ -117,6 +120,7 @@ impl Ncch {
             .options
             .contains(NcchFlagsOptions::NO_CRYPTO)
     }
+    #[must_use]
     fn region(&self, offset: u32, size: u32) -> CytrynaResult<&[u8]> {
         if offset == 0 || size == 0 {
             return Err(CytrynaError::MissingRegion);
@@ -126,15 +130,19 @@ impl Ncch {
         let size = size as usize * 0x200;
         Ok(&self.data[offset..][..size])
     }
+    #[must_use]
     pub fn plain_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.plain_offset, self.header.plain_size)
     }
+    #[must_use]
     pub fn logo_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.logo_offset, self.header.logo_size)
     }
+    #[must_use]
     pub fn exefs_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.exefs_offset, self.header.exefs_size)
     }
+    #[must_use]
     pub fn exefs(&self) -> CytrynaResult<exefs::ExeFs> {
         let data = self.exefs_region()?;
         let alignment = mem::align_of::<exefs::ExeFsHeader>();
@@ -152,6 +160,7 @@ impl Ncch {
             inner,
         })
     }
+    #[must_use]
     pub fn exheader(&self) -> CytrynaResult<OwnedOrBorrowed<Exheader>> {
         if self.header.exheader_size == 0 {
             return Err(CytrynaError::MissingRegion);
@@ -173,10 +182,10 @@ impl Ncch {
                 })
             };
 
-            let inp = &self.data[..exheader_size as usize];
+            let inp = &self.data[..exheader_size];
             let mut out = vec![0u8; inp.len()].into_boxed_slice();
             Aes128CtrDec::new(&key.into(), &iv.into())
-                .apply_keystream_b2b(&inp, &mut out)?;
+                .apply_keystream_b2b(inp, &mut out)?;
 
             unsafe {
                 let raw = Box::into_raw(out) as *mut u8 as *mut Exheader;
@@ -185,14 +194,16 @@ impl Ncch {
         } else {
             unsafe {
                 Ok(OwnedOrBorrowed::Borrowed(mem::transmute(
-                    self.data[..exheader_size as usize].as_ptr(),
+                    self.data[..exheader_size].as_ptr(),
                 )))
             }
         }
     }
+    #[must_use]
     pub fn romfs_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.romfs_offset, self.header.romfs_size)
     }
+    #[must_use]
     pub fn flags(&self) -> &NcchFlags {
         &self.header.flags
     }
@@ -381,6 +392,7 @@ pub struct Arm11KernelCaps {
 assert_eq_size!([u8; 0x80], Arm11KernelCaps);
 
 impl Arm11KernelCaps {
+    #[must_use]
     fn decode_descriptors(&self) -> Vec<KernelCap> {
         let mut ret = Vec::new();
         let mut expect_nine = false;
@@ -464,6 +476,7 @@ pub struct SyscallMask {
 }
 
 impl SyscallMask {
+    #[must_use]
     fn has_syscall(&self, num: u8) -> bool {
         let rem = num % 24;
         let idx = num / 24;

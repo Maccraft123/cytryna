@@ -13,7 +13,8 @@ pub struct ExeFs<'a> {
 }
 
 impl ExeFs<'_> {
-    pub fn file_by_name<'a>(&'a self, name: &[u8]) -> Option<VecOrSlice<u8>> {
+    #[must_use]
+    pub fn file_by_name(&self, name: &[u8]) -> Option<VecOrSlice<u8>> {
         let header = self.inner.header.file_header_by_name(name)?;
         let file = self.inner.file_by_header(header);
 
@@ -35,6 +36,7 @@ pub struct ExeFsInner {
 }
 
 impl ExeFsInner {
+    #[must_use]
     pub fn file_by_header<'a>(&'a self, hdr: &'a FileHeader) -> &'a [u8] {
         &self.data[hdr.offset as usize..][..hdr.size as usize]
     }
@@ -52,22 +54,19 @@ pub struct ExeFsHeader {
 assert_eq_size!([u8; 0x200], ExeFsHeader);
 
 impl ExeFsHeader {
+    #[must_use]
     pub fn file_headers_used(&self) -> impl Iterator<Item = &FileHeader> {
         self.file_headers.iter().filter(|hdr| !hdr.is_unused())
     }
+    #[must_use]
     pub fn file_header_by_name<'a>(&'a self, name: &[u8]) -> Option<&'a FileHeader> {
         if name.len() > 0x8 {
             return None;
         }
         let mut name = name.to_vec();
         name.resize(0x8, b'\0');
-        for hdr in self.file_headers_used() {
-            if name == hdr.name.data() {
-                return Some(hdr);
-            }
-        }
-
-        None
+        self.file_headers_used()
+            .find(|&hdr| name == hdr.name.data())
     }
 }
 
@@ -81,6 +80,7 @@ pub struct FileHeader {
 assert_eq_size!([u8; 16], FileHeader);
 
 impl FileHeader {
+    #[must_use]
     fn is_unused(&self) -> bool {
         !self.name.is_zero() && self.offset == 0 && self.size == 0
     }

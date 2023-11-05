@@ -1,3 +1,6 @@
+#![allow(clippy::transmute_ptr_to_ref)]
+#![allow(clippy::identity_op)]
+
 pub mod cia;
 pub mod crypto;
 pub mod firm;
@@ -87,7 +90,7 @@ impl<T> Deref for OwnedOrBorrowed<'_, T> {
     type Target = T;
     fn deref(&self) -> &T {
         match self {
-            Self::Owned(data) => &(data.as_ref()),
+            Self::Owned(data) => data.as_ref(),
             Self::Borrowed(data) => data,
         }
     }
@@ -102,7 +105,7 @@ pub enum VecOrSlice<'a, T> {
 impl<T> VecOrSlice<'_, T> {
     fn as_slice(&self) -> &[T] {
         match self {
-            Self::V(vec) => &vec,
+            Self::V(vec) => vec,
             Self::S(slice) => slice,
         }
     }
