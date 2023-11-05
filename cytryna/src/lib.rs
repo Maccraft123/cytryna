@@ -11,6 +11,7 @@ pub mod ticket;
 pub mod titleid;
 pub mod tmd;
 
+use std::mem;
 use std::ops::Deref;
 
 use thiserror::Error;
@@ -50,7 +51,9 @@ pub enum CytrynaError {
     #[error("Failed to stream-encrypt/decrypt data")]
     StreamCrypt(#[from] ctr::cipher::StreamCipherError),
     #[error("Failed to decode hex string")]
-    HexError(#[from] hex::FromHexError)
+    HexError(#[from] hex::FromHexError),
+    #[error("Incorrect alignment")]
+    BadAlign,
 }
 
 pub type CytrynaResult<T> = std::result::Result<T, CytrynaError>;
