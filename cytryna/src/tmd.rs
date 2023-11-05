@@ -1,8 +1,8 @@
 use std::{fmt, mem, ptr, slice};
 
-use crate::crypto::{FromBytes, SignedData};
+use crate::crypto::SignedData;
 use crate::titleid::{MaybeTitleIdBe, TitleId};
-use crate::CytrynaResult;
+use crate::{CytrynaResult, FromBytes};
 
 use bitflags::bitflags;
 use derivative::Derivative;
@@ -41,6 +41,10 @@ pub struct TmdInner {
 }
 
 impl FromBytes for TmdInner {
+    fn min_size() -> usize {
+        // https://www.3dbrew.org/wiki/Title_metadata#Header
+        0x64
+    }
     // TODO: check validity of content indexes
     fn bytes_ok(_: &[u8]) -> CytrynaResult<()> {
         Ok(())

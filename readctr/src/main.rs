@@ -11,11 +11,8 @@ fn main() -> anyhow::Result<()> {
     //let cia = Cia::from_slice(&data)?;
     //let ncch_region = cia.content_region()?.next().unwrap();
     //let ncch = Ncch::from_slice(ncch_region.data())?;
-    let firm = Firm::from_slice(&data)?;
+    let firm = Firm::from_bytes(&data)?;
     println!("{:#x?}", firm.header());
-    if firm.hashes_ok() {
-        println!("yay")
-    }
 
     Ok(())
 }

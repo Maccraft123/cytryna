@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::sync::OnceLock;
 
 use crate::string::SizedCString;
-use crate::{CytrynaError, CytrynaResult};
+use crate::{CytrynaError, CytrynaResult, FromBytes};
 
 use sha2::{Digest, Sha256};
 use thiserror::Error;
@@ -160,11 +160,6 @@ impl fmt::Display for KeyType {
         };
         f.write_str(string)
     }
-}
-
-pub trait FromBytes {
-    fn bytes_ok(_: &[u8]) -> CytrynaResult<()>;
-    fn cast(_: &[u8]) -> &Self;
 }
 
 pub fn sha256(data: &[u8]) -> [u8; 0x20] {

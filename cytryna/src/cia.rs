@@ -1,14 +1,15 @@
 use std::mem;
 
-use derivative::Derivative;
-use static_assertions::assert_eq_size;
-
 use crate::crypto::aes128_ctr::*;
 use crate::smdh::Smdh;
 use crate::ticket::Ticket;
 use crate::titleid::{MaybeTitleId, TitleId};
 use crate::tmd::{self, ContentIndex, Tmd};
-use crate::{CytrynaError, CytrynaResult, VecOrSlice};
+use crate::{CytrynaError, CytrynaResult, VecOrSlice, FromBytes};
+
+use derivative::Derivative;
+use memoffset::span_of;
+use static_assertions::assert_eq_size;
 
 const fn align(what: u32) -> usize {
     if what % 0x40 != 0 {
@@ -44,26 +45,28 @@ pub struct Cia {
     data: [u8],
 }
 
-impl Cia {
-    fn looks_ok(&self) -> CytrynaResult<()> {
-        if self.header.hdr_size != mem::size_of::<CiaHeader>() as u32 {
-            Err(CytrynaError::InvalidHeaderSize)
-        } else {
-            Ok(())
-        }
+impl FromBytes for Cia {
+    fn min_size() -> usize {
+        mem::size_of::<CiaHeader>()
     }
+    fn cast(bytes: &[u8]) -> &Cia {
+        unsafe { mem::transmute(bytes) }
+    }
+    fn bytes_ok(bytes: &[u8]) -> CytrynaResult<()> {
+        let hdr_size_span = span_of!(CiaHeader, hdr_size);
+        let hdr_size = u32::from_le_bytes(bytes[hdr_size_span].try_into().unwrap());
+        if hdr_size != mem::size_of::<CiaHeader>() as u32 {
+            return Err(CytrynaError::InvalidHeaderSize);
+        }
+
+        Ok(())
+    }
+}
+
+impl Cia {
     pub fn header(&self) -> &CiaHeader {
         &self.header
     }
-    pub fn from_slice(what: &[u8]) -> CytrynaResult<&Self> {
-        let alignment = mem::align_of::<CiaHeader>();
-        assert_eq!(0, what.as_ptr().align_offset(alignment));
-
-        let me: &Cia = unsafe { mem::transmute(what) };
-        me.looks_ok()?;
-        Ok(me)
-    }
-
     pub fn cert_chain_region(&self) -> &[u8] {
         &self.data[..align(self.header.cert_size)]
     }
@@ -175,6 +178,6 @@ impl MetaRegion {
         copy.into_iter().filter_map(|v| v.to_titleid().ok())
     }
     pub fn icon(&self) -> CytrynaResult<&Smdh> {
-        Smdh::from_slice(&self.icon)
+        Smdh::from_bytes(&self.icon)
     }
 }

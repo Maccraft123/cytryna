@@ -2,6 +2,7 @@ use std::mem;
 
 use crate::crypto::sha256;
 use crate::string::SizedCString;
+use crate::FromBytes;
 use crate::{CytrynaResult, CytrynaError};
 
 use derivative::Derivative;
@@ -64,22 +65,20 @@ pub struct Firm {
     data: [u8],
 }
 
-impl Firm {
-    pub fn from_slice(bytes: &[u8]) -> CytrynaResult<&Self> {
+impl FromBytes for Firm {
+    fn min_size() -> usize {
+        mem::size_of::<FirmHeader>()
+    }
+    fn bytes_ok(bytes: &[u8]) -> CytrynaResult<()> {
         if bytes[0..4] != *b"FIRM" {
             return Err(CytrynaError::InvalidMagic);
         }
-
-        unsafe { Ok(mem::transmute(bytes)) }
+        Ok(())
     }
-    pub fn section_data(&self, section: &SectionHeader) -> &[u8] {
-        let offset = section.offset as usize - mem::size_of::<FirmHeader>();
-        &self.data[offset..][..section.size as usize]
+    fn cast(bytes: &[u8]) -> &Firm {
+        unsafe { mem::transmute(bytes) }
     }
-    pub fn header(&self) -> &FirmHeader {
-        &self.header
-    }
-    pub fn hashes_ok(&self) -> bool {
+    fn hash_ok(&self) -> bool {
         for section in self.header.section_iter() {
             let data = self.section_data(section);
             if sha256(data) != section.hash {
@@ -87,5 +86,15 @@ impl Firm {
             }
         }
         true
+    }
+}
+
+impl Firm {
+    pub fn section_data(&self, section: &SectionHeader) -> &[u8] {
+        let offset = section.offset as usize - mem::size_of::<FirmHeader>();
+        &self.data[offset..][..section.size as usize]
+    }
+    pub fn header(&self) -> &FirmHeader {
+        &self.header
     }
 }

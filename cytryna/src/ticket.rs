@@ -1,8 +1,8 @@
 use std::mem;
 
-use crate::crypto::{aes128_ctr::*, FromBytes, KeyBag, KeyIndex, SignedData};
+use crate::crypto::{aes128_ctr::*, KeyBag, KeyIndex, SignedData};
 use crate::titleid::MaybeTitleIdBe;
-use crate::CytrynaResult;
+use crate::{CytrynaResult, FromBytes};
 
 use derivative::Derivative;
 
@@ -41,6 +41,10 @@ pub struct TicketInner {
 }
 
 impl FromBytes for TicketInner {
+    fn min_size() -> usize {
+        // https://www.3dbrew.org/wiki/Ticket#Ticket_Data
+        0x124
+    }
     fn bytes_ok(_: &[u8]) -> CytrynaResult<()> {
         Ok(())
     }

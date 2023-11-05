@@ -20,8 +20,8 @@ pub enum CytrynaError {
     MissingRegion,
     #[error("Invalid size of header")]
     InvalidHeaderSize,
-    #[error("Invalid hash for {0}")]
-    InvalidHash(&'static str),
+    #[error("Invalid hash")]
+    InvalidHash,
     #[error("Signature corrupted/forged")]
     SignatureCorrupted,
     #[error("Invalid region position")]
@@ -52,7 +52,24 @@ pub enum CytrynaError {
 
 pub type CytrynaResult<T> = std::result::Result<T, CytrynaError>;
 
+pub trait FromBytes {
+    fn min_size() -> usize;
+    fn bytes_ok(_: &[u8]) -> CytrynaResult<()>;
+    fn cast(_: &[u8]) -> &Self;
+    fn hash_ok(&self) -> bool { true }
+    fn from_bytes(bytes: &[u8]) -> CytrynaResult<&Self> {
+        Self::bytes_ok(bytes)?;
+        let ret = Self::cast(bytes);
+        if ret.hash_ok() {
+            Ok(ret)
+        } else {
+            Err(CytrynaError::InvalidHash)
+        }
+    }
+}
+
 pub mod prelude {
+    pub use crate::FromBytes;
     pub use crate::cia::Cia;
     pub use crate::firm::Firm;
     pub use crate::ncch::Ncch;

@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::string::SizedCStringUtf16;
-use crate::{CytrynaError, CytrynaResult};
+use crate::{CytrynaError, CytrynaResult, FromBytes};
 
 use bitflags::bitflags;
 use derivative::Derivative;
@@ -40,19 +40,23 @@ pub struct EulaVersion {
     minor: u8,
 }
 
-impl Smdh {
-    pub fn from_slice(slice: &[u8]) -> CytrynaResult<&Self> {
-        if slice.len() < mem::size_of::<Smdh>() {
-            return Err(CytrynaError::SliceTooSmall);
-        }
-
-        if [slice[0], slice[1], slice[2], slice[3]] != *b"SMDH" {
+impl FromBytes for Smdh {
+    fn min_size() -> usize {
+        mem::size_of::<Smdh>()
+    }
+    fn bytes_ok(bytes: &[u8]) -> CytrynaResult<()> {
+        if [bytes[0], bytes[1], bytes[2], bytes[3]] != *b"SMDH" {
             return Err(CytrynaError::InvalidMagic);
         }
-
-        assert_eq!(0, slice.as_ptr().align_offset(mem::align_of::<Smdh>()));
-        Ok(unsafe { mem::transmute(slice.as_ptr()) })
+        
+        Ok(())
     }
+    fn cast(bytes: &[u8]) -> &Self {
+        unsafe { mem::transmute(bytes.as_ptr()) }
+    }
+}
+
+impl Smdh {
     pub fn title(&self, lang: Language) -> &SmdhTitle {
         &self.titles[lang as usize]
     }
