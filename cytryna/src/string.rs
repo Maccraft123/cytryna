@@ -23,6 +23,12 @@ impl<const SIZE: usize> SizedCString<SIZE> {
     }
 }
 
+impl<const SIZE: usize> From<[u8; SIZE]> for SizedCString<SIZE> {
+    fn from(other: [u8; SIZE]) -> SizedCString<SIZE> {
+        SizedCString(other)
+    }
+}
+
 #[derive(Clone)]
 #[repr(C)]
 pub struct SizedCStringUtf16<const SIZE: usize> {

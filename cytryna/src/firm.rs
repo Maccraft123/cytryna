@@ -3,12 +3,12 @@ use std::mem;
 use crate::crypto::sha256;
 use crate::string::SizedCString;
 use crate::FromBytes;
-use crate::{CytrynaResult, CytrynaError};
+use crate::{align_up, CytrynaError, CytrynaResult};
 
 use derivative::Derivative;
 use hex_literal::hex;
 use static_assertions::assert_eq_size;
-
+use thiserror::Error;
 
 // source: https://gist.github.com/SciresM/cdd2266efb80175d37eabbe86f9d8c52
 static RETAIL_NAND_FIRM: [u8; 0x100] = hex!("B6724531C448657A2A2EE306457E350A10D544B42859B0E5B0BED27534CCCC2A4D47EDEA60A7DD99939950A6357B1E35DFC7FAC773B7E12E7C1481234AF141B31CF08E9F62293AA6BAAE246C15095F8B78402A684D852C680549FA5B3F14D9E838A2FB9C09A15ABB40DCA25E40A3DDC1F58E79CEC901974363A946E99B4346E8A372B6CD55A707E1EAB9BEC0200B5BA0B661236A8708D704517F43C6C38EE9560111E1405E5E8ED356C49C4FF6823D1219AFAEEB3DF3C36B62BBA88FC15BA8648F9333FD9FC092B8146C3D908F73155D48BE89D72612E18E4AA8EB9B7FD2A5F7328C4ECBFB0083833CBD5C983A25CEB8B941CC68EB017CE87F5D793ACA09ACF7");
@@ -31,14 +31,31 @@ pub struct FirmHeader {
 assert_eq_size!([u8; 0x200], FirmHeader);
 
 impl FirmHeader {
-    #[must_use] pub fn boot_priority(&self) -> u32 { self.boot_priority }
-    #[must_use] pub fn arm11_entrypoint(&self) -> u32 { self.arm11_entrypoint }
-    #[must_use] pub fn arm9_entrypoint(&self) -> u32 { self.arm9_entrypoint }
-    #[must_use] pub fn sections(&self) -> &[SectionHeader; 4] { &self.firmware_section_headers }
+    #[must_use]
+    pub fn boot_priority(&self) -> u32 {
+        self.boot_priority
+    }
+    #[must_use]
+    pub fn arm11_entrypoint(&self) -> u32 {
+        self.arm11_entrypoint
+    }
+    #[must_use]
+    pub fn arm9_entrypoint(&self) -> u32 {
+        self.arm9_entrypoint
+    }
+    #[must_use]
+    pub fn sections(&self) -> &[SectionHeader; 4] {
+        &self.firmware_section_headers
+    }
     #[must_use]
     pub fn section_iter(&self) -> impl Iterator<Item = &SectionHeader> {
-        self.firmware_section_headers.iter()
+        self.firmware_section_headers
+            .iter()
             .filter(|section| section.size != 0)
+    }
+    #[must_use]
+    pub fn sig(&self) -> &[u8; 0x100] {
+        &self.rsa2048_sig
     }
 }
 
@@ -54,12 +71,219 @@ pub struct SectionHeader {
 }
 assert_eq_size!([u8; 0x30], SectionHeader);
 
-#[derive(Debug, Clone)]
+impl SectionHeader {
+    pub(crate) fn empty() -> SectionHeader {
+        Self {
+            offset: 0,
+            phys_addr: 0,
+            size: 0,
+            copy_method: CopyMethod::Ndma,
+            hash: [0u8; 0x20],
+        }
+    }
+    pub fn offset(&self) -> u32 {
+        self.offset
+    }
+    pub fn load_addr(&self) -> u32 {
+        self.phys_addr
+    }
+    pub fn copy_method(&self) -> CopyMethod {
+        self.copy_method
+    }
+    pub fn hash(&self) -> &[u8; 0x20] {
+        &self.hash
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 #[repr(u32)]
 pub enum CopyMethod {
     Ndma = 0,
     Xdma,
     CpuMemcpy,
+}
+
+#[derive(Error, Debug)]
+pub enum FirmBuilderError {
+    #[error("Tried to add more than firware 4 sections")]
+    TooManySections,
+    #[error("Arm9 entry point is missing")]
+    NoArm9Entry,
+    #[error("Arm11 entry point is missing")]
+    NoArm11Entry,
+    #[error("Firmware sections are missing")]
+    NoSections,
+    #[error("Signature type is missing")]
+    NoSig,
+}
+
+#[derive(Debug, Clone)]
+pub enum FirmSignature {
+    RetailSighaxNand,
+    RetailSighaxNtr,
+    RetailSighaxSpi,
+    Custom(Box::<[u8; 0x100]>)
+}
+
+#[derive(Debug, Clone)]
+pub struct FirmBuilder {
+    boot_priority: u32,
+    arm11_entrypoint: Option<u32>,
+    arm9_entrypoint: Option<u32>,
+    fw_sections: [Option<FirmwareSection>; 4],
+    signature: Option<FirmSignature>,
+}
+
+impl FirmBuilder {
+    pub fn boot_priority(&mut self, val: u32) -> &mut Self {
+        self.boot_priority = val;
+        self
+    }
+    pub fn arm11_entrypoint(&mut self, val: u32) -> &mut Self {
+        self.arm11_entrypoint = Some(val);
+        self
+    }
+    pub fn arm9_entrypoint(&mut self, val: u32) -> &mut Self {
+        self.arm9_entrypoint = Some(val);
+        self
+    }
+    pub fn signature(&mut self, sig: FirmSignature) -> &mut Self {
+        self.signature = Some(sig);
+        self
+    }
+    pub fn add_fw_section(
+        &mut self,
+        section: FirmwareSection,
+    ) -> Result<&mut Self, FirmBuilderError> {
+        let mut slot = self
+            .fw_sections
+            .iter_mut()
+            .find(|v| v.is_none())
+            .ok_or(FirmBuilderError::TooManySections)?;
+        *slot = Some(section);
+        Ok(self)
+    }
+    pub fn override_section(&mut self, which: usize, section: FirmwareSection) -> &mut Self {
+        self.fw_sections[which] = Some(section);
+        self
+    }
+    pub fn build(&mut self) -> Result<Vec<u8>, FirmBuilderError> {
+        let arm11_entrypoint = self
+            .arm11_entrypoint
+            .ok_or(FirmBuilderError::NoArm11Entry)?;
+        let arm9_entrypoint = self.arm9_entrypoint.ok_or(FirmBuilderError::NoArm9Entry)?;
+        let file_size = self
+            .fw_sections
+            .iter()
+            .flatten()
+            .map(|s| s.data.len())
+            .reduce(|acc, size| acc + size)
+            .ok_or(FirmBuilderError::NoSections)?
+            + mem::size_of::<FirmHeader>();
+
+        let sig = match self.signature.take().ok_or(FirmBuilderError::NoSig)? {
+            FirmSignature::RetailSighaxNand => RETAIL_NAND_FIRM,
+            FirmSignature::RetailSighaxNtr => RETAIL_NTR_FIRM,
+            FirmSignature::RetailSighaxSpi => RETAIL_SPI_FIRM,
+            FirmSignature::Custom(sig) => *sig,
+        };
+
+        let mut header = FirmHeader {
+            magic: (*b"FIRM").into(),
+            boot_priority: self.boot_priority,
+            arm11_entrypoint,
+            arm9_entrypoint,
+            _reserved: [0u8; 0x30],
+            firmware_section_headers: [
+                SectionHeader::empty(),
+                SectionHeader::empty(),
+                SectionHeader::empty(),
+                SectionHeader::empty(),
+            ],
+            rsa2048_sig: sig.clone(),
+        };
+
+        let mut buf = Vec::with_capacity(file_size);
+        buf.resize(0x200, 0);
+
+        let mut offset = 0x200;
+        for (i, mut s) in self.fw_sections.clone().into_iter().flatten().enumerate() {
+            // https://github.com/derrekr/ctr_firm_builder aligns to 0x200
+            let size = align_up(s.data.len() as u32, 0x200);
+            s.data.resize(size as usize, 0);
+
+            let hash = sha256(&s.data);
+            let hdr = SectionHeader {
+                offset,
+                phys_addr: s.addr,
+                size: s.data.len() as u32,
+                copy_method: s.copy_method,
+                hash,
+            };
+            offset += size;
+            header.firmware_section_headers[i] = hdr;
+            buf.extend(s.data);
+        }
+
+        unsafe {
+            let vec_ptr = buf.as_mut_ptr();
+            let header_ptr = &header as *const FirmHeader as *const u8;
+            vec_ptr.copy_from_nonoverlapping(header_ptr, mem::size_of::<FirmHeader>());
+        }
+
+        Ok(buf)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{FromBytes};
+    use super::{Firm, FirmwareSection, FirmSignature, CopyMethod};
+    #[test]
+    fn test_firm_building() {
+        let input = include_bytes!("../fastboot3DS.firm");
+        let input_firm = Firm::from_bytes(input).unwrap();
+
+        let hdr = input_firm.header();
+        let boot_priority = hdr.boot_priority();
+        let arm11_entry = hdr.arm11_entrypoint();
+        let arm9_entry = hdr.arm9_entrypoint();
+
+        let mut firm_builder = Firm::builder();
+        firm_builder.boot_priority(boot_priority)
+            .arm11_entrypoint(arm11_entry)
+            .arm9_entrypoint(arm9_entry)
+            .signature(FirmSignature::Custom(Box::new(hdr.sig().clone())));
+
+        for section in hdr.section_iter() {
+            let load_addr = section.load_addr();
+            let copy_method = section.copy_method();
+            let data = input_firm.section_data(section).to_vec();
+
+            firm_builder.add_fw_section(FirmwareSection::new(data, load_addr, copy_method)).unwrap();
+        }
+
+        let firm = firm_builder.build().unwrap();
+
+        assert!(Firm::from_bytes(&firm).is_ok());
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FirmwareSection {
+    data: Vec<u8>,
+    addr: u32,
+    copy_method: CopyMethod,
+}
+
+impl FirmwareSection {
+    pub fn new(data: Vec<u8>, addr: u32, copy_method: CopyMethod) -> Self {
+        Self {
+            data,
+            addr,
+            copy_method,
+        }
+    }
 }
 
 #[repr(C)]
@@ -93,6 +317,16 @@ impl FromBytes for Firm {
 }
 
 impl Firm {
+    #[must_use]
+    pub fn builder() -> FirmBuilder {
+        FirmBuilder {
+            boot_priority: 0,
+            arm11_entrypoint: None,
+            arm9_entrypoint: None,
+            fw_sections: [None, None, None, None],
+            signature: None,
+        }
+    }
     #[must_use]
     pub fn section_data(&self, section: &SectionHeader) -> &[u8] {
         let offset = section.offset as usize - mem::size_of::<FirmHeader>();

@@ -83,6 +83,14 @@ pub mod prelude {
     pub use crate::ticket::Ticket;
 }
 
+pub(crate) const fn align_up(val: u32, alignment: u32) -> u32 {
+    if val % alignment != 0 {
+        val + (alignment - (val % alignment))
+    } else {
+        val
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum OwnedOrBorrowed<'a, T> {
     Owned(Box<T>),
