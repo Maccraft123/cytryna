@@ -155,7 +155,7 @@ impl FirmBuilder {
         &mut self,
         section: FirmwareSection,
     ) -> Result<&mut Self, FirmBuilderError> {
-        let mut slot = self
+        let slot = self
             .fw_sections
             .iter_mut()
             .find(|v| v.is_none())

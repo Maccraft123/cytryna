@@ -11,7 +11,6 @@ pub mod ticket;
 pub mod titleid;
 pub mod tmd;
 
-use std::mem;
 use std::ops::Deref;
 
 use thiserror::Error;
