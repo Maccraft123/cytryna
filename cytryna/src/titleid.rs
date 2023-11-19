@@ -62,7 +62,7 @@ impl TitleId {
     pub fn from_u64(what: u64) -> CytrynaResult<TitleId> {
         let platform = (what & 0x0000_0000_0000_ffff) as u16;
 
-        if platform >= 6 {
+        if platform >= 6 || platform == 0 {
             return Err(CytrynaError::EnumValueOutOfRange("smdh::Platform"));
         }
 
