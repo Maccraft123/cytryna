@@ -83,7 +83,7 @@ pub fn keygen(x: [u8; 0x10], y: [u8; 0x10]) -> CytrynaResult<[u8; 0x10]> {
     let y = u128::from_be_bytes(y);
     let gen = u128::from_be_bytes(*KeyBag::global()?.get_key(KeyIndex::Generator)?);
 
-    Ok(((x.rotate_left(2) ^ y) + gen)
+    Ok(((x.rotate_left(2) ^ y).wrapping_add(gen))
         .rotate_right(41)
         .to_be_bytes())
 }
