@@ -6,5 +6,5 @@
 *.romfs
 *.exefs
 *.firm
-.txt
+*.txt
 /target
