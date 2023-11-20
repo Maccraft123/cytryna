@@ -1,10 +1,12 @@
-use std::{borrow::Cow, fmt, str, string};
+use core::{fmt, str};
 
-use thiserror::Error;
+use std::{borrow::Cow, string};
 
-#[derive(Error, Debug)]
+use snafu::Snafu;
+
+#[derive(Debug, Snafu)]
 pub enum SizedCStringError {
-    #[error("Input string too big to fit into storage")]
+    #[snafu(display("Input string too big to fit into storage"))]
     TooBig,
 }
 

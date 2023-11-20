@@ -13,45 +13,45 @@ pub mod tmd;
 
 use std::ops::Deref;
 
-use thiserror::Error;
+use snafu::Snafu;
 
-#[derive(Error, Debug)]
+#[derive(Debug, Snafu)]
 pub enum CytrynaError {
-    #[error("Invalid magic bytes")]
+    #[snafu(display("Invalid magic bytes"))]
     InvalidMagic,
-    #[error("Missing region")]
+    #[snafu(display("Missing region"))]
     MissingRegion,
-    #[error("Invalid size of header")]
+    #[snafu(display("Invalid size of header"))]
     InvalidHeaderSize,
-    #[error("Invalid hash")]
+    #[snafu(display("Invalid hash"))]
     InvalidHash,
-    #[error("Signature corrupted/forged")]
+    #[snafu(display("Signature corrupted/forged"))]
     SignatureCorrupted,
-    #[error("Invalid region position")]
+    #[snafu(display("Invalid region position"))]
     InvalidRegionPosition,
-    #[error("Unsupported version of header")]
+    #[snafu(display("Unsupported version of header"))]
     UnsupportedHeaderVersion,
-    #[error("Missing {0} key")]
-    MissingKey(crypto::KeyIndex),
-    #[error("Uninitialized keybag")]
+    #[snafu(display("Missing {idx} key"))]
+    MissingKey{idx: crypto::KeyIndex},
+    #[snafu(display("Uninitialized keybag"))]
     NoKeyBag,
-    #[error("Value out of range for {0} enum")]
-    EnumValueOutOfRange(&'static str),
-    #[error("Byte slice passed is too small")]
+    #[snafu(display("Value out of range for {name} enum"))]
+    EnumValueOutOfRange{name: &'static str},
+    #[snafu(display("Byte slice passed is too small"))]
     SliceTooSmall,
-    #[error("Invalid length of {what}: {actual} (expected {expected})")]
+    #[snafu(display("Invalid length of {what}: {actual} (expected {expected})"))]
     InvalidLength{
         what: &'static str,
         actual: usize,
         expected: usize,
     },
-    #[error("Failed to parse keyindex")]
-    KeyIndexFail(#[from] crypto::KeyIndexParseError),
-    #[error("Failed to stream-encrypt/decrypt data")]
-    StreamCrypt(#[from] ctr::cipher::StreamCipherError),
-    #[error("Failed to decode hex string")]
-    HexError(#[from] hex::FromHexError),
-    #[error("Incorrect alignment")]
+    #[snafu(display("Failed to parse keyindex"), context(false))]
+    KeyIndexFail{source: crypto::KeyIndexParseError},
+    #[snafu(display("Failed to stream-encrypt/decrypt data"), context(false))]
+    StreamCrypt{source: ctr::cipher::StreamCipherError},
+    #[snafu(display("Failed to decode hex string"), context(false))]
+    HexError{source: hex::FromHexError},
+    #[snafu(display("Incorrect alignment"))]
     BadAlign,
 }
 
