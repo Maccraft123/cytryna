@@ -241,7 +241,7 @@ mod tests {
     use super::{Firm, FirmwareSection, FirmSignature, CopyMethod};
     #[test]
     fn test_firm_building() {
-        let input = include_bytes!("../fastboot3DS.firm");
+        let input = include_bytes!("../testdata/fastboot3DS.firm");
         let input_firm = Firm::from_bytes(input).unwrap();
 
         let hdr = input_firm.header();
