@@ -1,18 +1,157 @@
 use std::mem;
+use std::slice;
 
-use crate::string::SizedCStringUtf16;
+use crate::string::{SizedCString, SizedCStringError, SizedCStringUtf16};
 use crate::{CytrynaError, CytrynaResult, FromBytes};
 
 use bitflags::bitflags;
+use bmp::{px, Pixel};
 use derivative::Derivative;
+use modular_bitfield::prelude::*;
 use static_assertions::assert_eq_size;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum SmdhError {
+    #[error("Missing short description")]
+    MissingShortDesc,
+    #[error("Missing long description")]
+    MissingLongDesc,
+    #[error("Missing publisher name")]
+    MissingPublisher,
+    #[error("Missing icon data")]
+    MissingIcon,
+    #[error("SizedCString error: {0}")]
+    StringErr(#[from] SizedCStringError),
+    #[error("Invalid BMP image size, got: {got}, expected: {expected}")]
+    InvalidBmpSize { got: u32, expected: u32 },
+    #[error("Only square images can be SMDH icons")]
+    OnlySquaresAllowed,
+}
+
+type SmdhResult<T> = Result<T, SmdhError>;
+
+pub struct SmdhBuilder {
+    short_desc: Option<SizedCStringUtf16<0x40>>,
+    long_desc: Option<SizedCStringUtf16<0x80>>,
+    publisher: Option<SizedCStringUtf16<0x40>>,
+    big_icon: Option<Box<IconData<0x900>>>,
+    small_icon: Option<Box<IconData<0x240>>>,
+}
+
+impl SmdhBuilder {
+    pub fn with_short_desc(&mut self, desc: &str) -> SmdhResult<&mut Self> {
+        let _ = self.short_desc.insert(desc.try_into()?);
+        Ok(self)
+    }
+    pub fn with_long_desc(&mut self, desc: &str) -> SmdhResult<&mut Self> {
+        let _ = self.long_desc.insert(desc.try_into()?);
+        Ok(self)
+    }
+    pub fn with_publisher(&mut self, publisher: &str) -> SmdhResult<&mut Self> {
+        let _ = self.publisher.insert(publisher.try_into()?);
+        Ok(self)
+    }
+    pub fn with_small_icon(&mut self, icon: IconData<0x240>) -> &mut Self {
+        let _ = self.small_icon.insert(Box::new(icon));
+        self
+    }
+    pub fn with_icon(&mut self, icon: IconData<0x900>) -> &mut Self {
+        let _ = self.big_icon.insert(Box::new(icon));
+        self
+    }
+    pub fn build(&mut self) -> Result<Smdh, SmdhError> {
+        let title = SmdhTitle {
+            short_desc: self.short_desc.take().ok_or(SmdhError::MissingShortDesc)?,
+            long_desc: self.long_desc.take().ok_or(SmdhError::MissingLongDesc)?,
+            publisher: self.publisher.take().ok_or(SmdhError::MissingPublisher)?,
+        };
+        // lol
+        let titles = [
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title.clone(),
+            title,
+        ];
+
+        let mut age_ratings = [AgeRating::empty(); 16];
+        for (i, rating) in age_ratings.iter_mut().enumerate() {
+            if i == 2 || i == 5 || i >= 12 {
+                continue;
+            }
+            *rating = AgeRating::NO_AGE_RESTRICTION | AgeRating::ENABLED;
+        }
+
+        let big = self.big_icon.take().ok_or(SmdhError::MissingIcon)?;
+        let small = self.small_icon.take().unwrap_or_else(|| {
+            let mut img_big = bmp::Image::new(48, 48);
+            for (x, y, rgb) in big.pixel_iter() {
+                img_big.set_pixel(
+                    x as u32,
+                    y as u32,
+                    px!(rgb.r() << 3, rgb.g() << 2, rgb.b() << 3),
+                );
+            }
+            let data: [Rgb565Pixel; 0x240] = [0u16; 0x240].map(|v| v.into());
+            let mut this = IconData { data };
+            for (x, y, rgb) in this.pixel_iter_mut() {
+                let one = img_big.get_pixel(x as u32, y as u32);
+                let two = img_big.get_pixel(x as u32, (y + 1) as u32);
+                let three = img_big.get_pixel((x + 1) as u32, y as u32);
+                let four = img_big.get_pixel((x + 1) as u32, (y + 1) as u32);
+                let r = (one.r as u32 + two.r as u32 + three.r as u32 + four.r as u32) / 4;
+                let g = (one.g as u32 + two.g as u32 + three.g as u32 + four.g as u32) / 4;
+                let b = (one.b as u32 + two.b as u32 + three.b as u32 + four.b as u32) / 4;
+                rgb.set_r(r as u8 >> 3);
+                rgb.set_g(g as u8 >> 2);
+                rgb.set_b(b as u8 >> 3);
+            }
+
+            Box::new(this)
+        });
+
+        Ok(Smdh {
+            magic: SizedCString::from(*b"SMDH"),
+            version: 0,
+            _reserved0: 0,
+            titles,
+            age_ratings,
+            region_lockout: RegionLockout::REGION_FREE,
+            matchmaker_id: MatchmakerId { id: 0, bit_id: 0 },
+            flags: SmdhFlags::VISIBLE_IN_HOMEMENU
+                | SmdhFlags::REGION_RATING_REQUIRED
+                | SmdhFlags::RECORD_USAGE,
+            eula_version: EulaVersion { major: 0, minor: 0 },
+            _reserved1: 0,
+            optimal_animation_default_frame: 0f32,
+            cec_id: 0,
+            _reserved2: 0,
+            icon: SmdhIcon {
+                big: *big,
+                small: *small,
+            },
+        })
+    }
+}
 
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
 pub struct Smdh {
     #[derivative(Debug = "ignore")]
-    magic: [u8; 4],
+    magic: SizedCString<4>,
     version: u16,
     #[derivative(Debug = "ignore")]
     _reserved0: u16,
@@ -48,7 +187,7 @@ impl FromBytes for Smdh {
         if [bytes[0], bytes[1], bytes[2], bytes[3]] != *b"SMDH" {
             return Err(CytrynaError::InvalidMagic);
         }
-        
+
         Ok(())
     }
     fn cast(bytes: &[u8]) -> &Self {
@@ -57,6 +196,20 @@ impl FromBytes for Smdh {
 }
 
 impl Smdh {
+    #[must_use]
+    pub fn as_bytes(&self) -> &[u8; 0x36c0] {
+        unsafe { mem::transmute(self) }
+    }
+    #[must_use]
+    pub fn builder() -> SmdhBuilder {
+        SmdhBuilder {
+            big_icon: None,
+            small_icon: None,
+            long_desc: None,
+            short_desc: None,
+            publisher: None,
+        }
+    }
     #[must_use]
     pub fn title(&self, lang: Language) -> &SmdhTitle {
         &self.titles[lang as usize]
@@ -89,6 +242,12 @@ impl Smdh {
     pub fn cec_id(&self) -> u32 {
         self.cec_id
     }
+    pub fn big_icon(&self) -> &IconData<0x900> {
+        &self.icon.big
+    }
+    pub fn small_icon(&self) -> &IconData<0x240> {
+        &self.icon.small
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -97,8 +256,8 @@ pub enum AgeRatingRegion {
     Cero = 0,
     Esrb = 1,
     // reserved
-    Usk = 2,
-    PegiGen = 3,
+    Usk = 3,
+    PegiGen = 4,
     // reserved
     PegiPrt = 5,
     PegiBbfc = 6,
@@ -213,78 +372,197 @@ pub struct SmdhIcon {
 assert_eq_size!([u8; 0x1680], SmdhIcon);
 
 #[derive(Clone)]
+#[repr(C)]
 pub struct IconData<const SIZE: usize> {
-    data: [u16; SIZE],
+    data: [Rgb565Pixel; SIZE],
 }
+
+#[bitfield]
+#[derive(Clone, Debug)]
+#[repr(u16)]
+pub struct Rgb565Pixel {
+    b: B5,
+    g: B6,
+    r: B5,
+}
+
+// shamelessly stolen from smdhtool
+const TILE_ORDER: [u8; 64] = [
+    00, 01, 08, 09, 02, 03, 10, 11, 16, 17, 24, 25, 18, 19, 26, 27, 04, 05, 12, 13, 06, 07, 14, 15,
+    20, 21, 28, 29, 22, 23, 30, 31, 32, 33, 40, 41, 34, 35, 42, 43, 48, 49, 56, 57, 50, 51, 58, 59,
+    36, 37, 44, 45, 38, 39, 46, 47, 52, 53, 60, 61, 54, 55, 62, 63,
+];
 
 impl<const SIZE: usize> IconData<SIZE> {
     #[must_use]
-    pub fn raw_data(&self) -> &[u16; SIZE] {
+    pub fn raw_data(&self) -> &[Rgb565Pixel; SIZE] {
         &self.data
     }
+    #[must_use]
+    pub fn width() -> u8 {
+        if SIZE == 0x240 {
+            24
+        } else if SIZE == 0x900 {
+            48
+        } else {
+            unreachable!("how the f-")
+        }
+    }
+    #[must_use]
+    pub fn pixel_iter(&self) -> PixelIterator<SIZE> {
+        PixelIterator {
+            inner: self.data.iter(),
+            width: Self::width(),
+            i: 0,
+            j: 0,
+            k: 0,
+        }
+    }
+    #[must_use]
+    pub fn pixel_iter_mut(&mut self) -> PixelIteratorMut<SIZE> {
+        PixelIteratorMut {
+            inner: self.data.iter_mut(),
+            width: Self::width(),
+            i: 0,
+            j: 0,
+            k: 0,
+        }
+    }
+    #[must_use]
+    pub fn to_bmp(&self) -> bmp::Image {
+        let mut img = bmp::Image::new(Self::width() as u32, Self::width() as u32);
+        for (x, y, rgb) in self.pixel_iter() {
+            img.set_pixel(
+                x as u32,
+                y as u32,
+                px!(rgb.r() << 3, rgb.g() << 2, rgb.b() << 3),
+            );
+        }
+        img
+    }
 }
 
-// gonna be procrastinating on that, comment for now to silence warnings
-/*
-#[cfg(feature = "embedded_graphics")]
-use embedded_graphics::{
-    prelude::*,
-    pixelcolor::Rgb565,
-    primitives::Rectangle,
-};
+impl<const SIZE: usize> TryFrom<&bmp::Image> for IconData<SIZE> {
+    type Error = SmdhError;
 
-#[cfg(feature = "embedded_graphics")]
-impl<const SIZE: usize> IconData<SIZE> {
-    const TILE_ORDER: [u8; 64] =
-        [00,01,08,09,02,03,10,11,
-         16,17,24,25,18,19,26,27,
-         04,05,12,13,06,07,14,15,
-         20,21,28,29,22,23,30,31,
-         32,33,40,41,34,35,42,43,
-         48,49,56,57,50,51,58,59,
-         36,37,44,45,38,39,46,47,
-         52,53,60,61,54,55,62,63];
-    fn pixel(&self, x: u8, y: u8) -> u16 {
-        let tile_x = x - x % 8;
-        let tile_y = y - y % 8;
+    fn try_from(src: &bmp::Image) -> Result<Self, Self::Error> {
+        if src.get_width() != src.get_height() {
+            return Err(SmdhError::OnlySquaresAllowed);
+        }
+        if src.get_width() * src.get_width() != SIZE as u32 {
+            return Err(SmdhError::InvalidBmpSize {
+                got: src.get_width() * src.get_width(),
+                expected: SIZE as u32,
+            });
+        }
+        let data: [Rgb565Pixel; SIZE] = [0u16; SIZE].map(|v| v.into());
+        let mut this = Self { data };
+        for (x, y, rgb) in this.pixel_iter_mut() {
+            let rgb888 = src.get_pixel(x as u32, y as u32);
+            rgb.set_r(rgb888.r >> 3);
+            rgb.set_g(rgb888.g >> 2);
+            rgb.set_b(rgb888.b >> 3);
+        }
+        Ok(this)
+    }
+}
 
-        let mut offset = None;
-        for i in 0..64 {
-            let tmp_x = Self::TILE_ORDER[i] & 0x7;
-            let tmp_y = Self::TILE_ORDER[i] >> 3;
-            if tmp_x == x % 8 && tmp_y == y % 8 {
-                offset = Some(i as u8);
-                break;
+#[derive(Debug)]
+pub struct PixelIteratorMut<'a, const SIZE: usize> {
+    inner: slice::IterMut<'a, Rgb565Pixel>,
+    width: u8,
+    j: u8,
+    i: u8,
+    k: u8,
+}
+
+impl<'a, const SIZE: usize> Iterator for PixelIteratorMut<'a, SIZE> {
+    type Item = (u8, u8, &'a mut Rgb565Pixel);
+
+    fn next(&mut self) -> Option<(u8, u8, &'a mut Rgb565Pixel)> {
+        let x = (TILE_ORDER[self.k as usize] & 0x7) + self.i;
+        let y = (TILE_ORDER[self.k as usize] >> 3) + self.j;
+        let rgb = self.inner.next()?;
+
+        self.k += 1;
+        if self.k == 64 {
+            self.k = 0;
+            self.i += 8;
+            if self.i == self.width {
+                self.i = 0;
+                self.j += 8;
             }
         }
-        self.data[(tile_y * 8 + tile_x + offset.unwrap()) as usize]
+
+        Some((x, y, rgb))
     }
 }
 
-#[cfg(feature = "embedded_graphics")]
-impl<const SIZE: usize> ImageDrawable for IconData<SIZE> {
-    type Color = Rgb565;
-
-    fn draw<D>(&self, target: &mut D) -> CytrynaResult<(), D::Error>
-        where D: DrawTarget<Color = Self::Color>
-    {
-        todo!()
-    }
-    fn draw_sub_image<D>(&self, target: &mut D, area: &Rectangle) -> CytrynaResult<(), D::Error>
-        where D: DrawTarget<Color = Self::Color>
-    {
-        todo!()
-    }
+#[derive(Debug)]
+pub struct PixelIterator<'a, const SIZE: usize> {
+    inner: slice::Iter<'a, Rgb565Pixel>,
+    width: u8,
+    j: u8,
+    i: u8,
+    k: u8,
 }
 
-#[cfg(feature = "embedded_graphics")]
-impl<const SIZE: usize> OriginDimensions for IconData<SIZE> {
-    fn size(&self) -> Size {
-        match SIZE {
-            0x240 => Size::new(24, 24),
-            0x900 => Size::new(48, 48),
-            _ => panic!("Unsupported SMDH icon size"),
+impl<'a, const SIZE: usize> Iterator for PixelIterator<'a, SIZE> {
+    type Item = (u8, u8, &'a Rgb565Pixel);
+
+    fn next(&mut self) -> Option<(u8, u8, &'a Rgb565Pixel)> {
+        let x = (TILE_ORDER[self.k as usize] & 0x7) + self.i;
+        let y = (TILE_ORDER[self.k as usize] >> 3) + self.j;
+        let rgb = self.inner.next()?;
+
+        self.k += 1;
+        if self.k == 64 {
+            self.k = 0;
+            self.i += 8;
+            if self.i == self.width {
+                self.i = 0;
+                self.j += 8;
+            }
         }
+
+        Some((x, y, rgb))
     }
 }
-*/
+
+#[cfg(test)]
+mod tests {
+    use super::IconData;
+    use bmp::Pixel;
+
+    #[test]
+    fn bmp_to_smdh_to_bmp_24() {
+        let mut src = bmp::Image::new(24, 24);
+        for (x, y) in src.coordinates() {
+            let r = (rand::random::<bool>() as u8) << 7;
+            let g = (rand::random::<bool>() as u8) << 7;
+            let b = (rand::random::<bool>() as u8) << 7;
+            src.set_pixel(x, y, bmp::px!(r, g, b));
+        }
+
+        let dst: IconData<0x240> = (&src).try_into().unwrap();
+        let other_src: bmp::Image = dst.to_bmp();
+
+        assert_eq!(src, other_src);
+    }
+
+    #[test]
+    fn bmp_to_smdh_to_bmp_48() {
+        let mut src = bmp::Image::new(48, 48);
+        for (x, y) in src.coordinates() {
+            let r = (rand::random::<bool>() as u8) << 7;
+            let g = (rand::random::<bool>() as u8) << 7;
+            let b = (rand::random::<bool>() as u8) << 7;
+            src.set_pixel(x, y, bmp::px!(r, g, b));
+        }
+
+        let dst: IconData<0x900> = (&src).try_into().unwrap();
+        let other_src: bmp::Image = dst.to_bmp();
+
+        assert_eq!(src, other_src);
+    }
+}

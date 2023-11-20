@@ -1,5 +1,13 @@
 use std::{borrow::Cow, fmt, str, string};
 
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum SizedCStringError {
+    #[error("Input string too big to fit into storage")]
+    TooBig,
+}
+
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct SizedCString<const SIZE: usize>([u8; SIZE]);
@@ -51,6 +59,19 @@ impl<const SIZE: usize> SizedCStringUtf16<SIZE> {
     #[must_use]
     pub fn data(&self) -> &[u16] {
         &self.data
+    }
+}
+
+impl<const SIZE: usize> TryFrom<&str> for SizedCStringUtf16<SIZE> {
+    type Error = SizedCStringError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut data: Vec<u16> = value.encode_utf16().collect();
+        if data.len() > SIZE {
+            return Err(SizedCStringError::TooBig);
+        }
+        data.resize(SIZE, 0u16);
+        Ok(Self { data: data.try_into().unwrap() })
     }
 }
 
