@@ -1,4 +1,4 @@
-use std::{fmt, mem, ptr, slice};
+use core::{fmt, mem, ptr, slice};
 
 use crate::crypto::SignedData;
 use crate::titleid::{MaybeTitleIdBe, TitleId};
