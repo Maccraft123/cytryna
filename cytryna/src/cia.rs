@@ -1,4 +1,4 @@
-use core::mem;
+use std::mem;
 
 use crate::crypto::aes128_ctr::*;
 use crate::smdh::Smdh;

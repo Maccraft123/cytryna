@@ -1,14 +1,16 @@
-use core::{fmt, mem, num, str::FromStr};
-use core::marker::PhantomData;
-
 use std::collections::HashMap;
+use std::fmt;
+use std::marker::PhantomData;
+use std::mem;
+use std::num;
+use std::str::FromStr;
 use std::sync::OnceLock;
 
 use crate::string::SizedCString;
 use crate::{CytrynaError, CytrynaResult, FromBytes};
 
 use sha2::{Digest, Sha256};
-use snafu::Snafu;
+use thiserror::Error;
 
 pub mod aes128_ctr {
     pub use aes::cipher::block_padding::NoPadding;
@@ -67,7 +69,7 @@ impl KeyBag {
     }
     #[must_use]
     pub fn get_key(&self, idx: KeyIndex) -> CytrynaResult<&[u8; 0x10]> {
-        self.keys.get(&idx).ok_or(CytrynaError::MissingKey{idx: idx})
+        self.keys.get(&idx).ok_or(CytrynaError::MissingKey(idx))
     }
     #[must_use]
     pub fn global() -> CytrynaResult<&'static Self> {
@@ -106,14 +108,14 @@ impl fmt::Display for KeyIndex {
     }
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Error, Debug)]
 pub enum KeyIndexParseError {
-    #[snafu(display("Failed to parse a hex number"), context(false))]
-    NumberParseError{source: num::ParseIntError},
-    #[snafu(display("Invalid key type \"{ty}\""))]
-    InvalidKeyType{ty: String},
-    #[snafu(display("Invalid X/Y/Z key type \"{ty}\""))]
-    InvalidKeyXYNType{ty: String},
+    #[error("Failed to parse a hex number")]
+    NumberParseError(#[from] num::ParseIntError),
+    #[error("Invalid key type \"{0}\"")]
+    InvalidKeyType(String),
+    #[error("Invalid X/Y/Z key type \"{0}\"")]
+    InvalidKeyXYNType(String),
 }
 
 impl FromStr for KeyIndex {
@@ -129,7 +131,7 @@ impl FromStr for KeyIndex {
                 "keyx" => KeyType::X,
                 "keyy" => KeyType::Y,
                 "keyn" => KeyType::N,
-                _ => return Err(KeyIndexParseError::InvalidKeyXYNType{ty: from[2..].to_string()}),
+                _ => return Err(KeyIndexParseError::InvalidKeyXYNType(from[2..].to_string())),
             };
             Ok(Self::Slot(num, keytype))
         } else if from.starts_with("common") {
@@ -142,7 +144,7 @@ impl FromStr for KeyIndex {
                 Ok(Self::CommonN(num))
             }
         } else {
-            Err(KeyIndexParseError::InvalidKeyType{ty: from.to_string()})
+            Err(KeyIndexParseError::InvalidKeyType(from.to_string()))
         }
     }
 }

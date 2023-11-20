@@ -1,4 +1,4 @@
-use core::mem;
+use std::mem;
 
 use crate::{CytrynaError, CytrynaResult};
 use bitflags::bitflags;
@@ -63,7 +63,7 @@ impl TitleId {
         let platform = (what & 0x0000_0000_0000_ffff) as u16;
 
         if platform >= 6 || platform == 0 {
-            return Err(CytrynaError::EnumValueOutOfRange{name: "smdh::Platform"});
+            return Err(CytrynaError::EnumValueOutOfRange("smdh::Platform"));
         }
 
         Ok(unsafe { mem::transmute(what) })

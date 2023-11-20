@@ -1,5 +1,5 @@
-use core::mem;
-use core::slice;
+use std::mem;
+use std::slice;
 
 use crate::string::{SizedCString, SizedCStringError, SizedCStringUtf16};
 use crate::{CytrynaError, CytrynaResult, FromBytes};
@@ -9,23 +9,23 @@ use bmp::{px, Pixel};
 use derivative::Derivative;
 use modular_bitfield::prelude::*;
 use static_assertions::assert_eq_size;
-use snafu::Snafu;
+use thiserror::Error;
 
-#[derive(Debug, Snafu)]
+#[derive(Error, Debug)]
 pub enum SmdhError {
-    #[snafu(display("Missing short description"))]
+    #[error("Missing short description")]
     MissingShortDesc,
-    #[snafu(display("Missing long description"))]
+    #[error("Missing long description")]
     MissingLongDesc,
-    #[snafu(display("Missing publisher name"))]
+    #[error("Missing publisher name")]
     MissingPublisher,
-    #[snafu(display("Missing icon data"))]
+    #[error("Missing icon data")]
     MissingIcon,
-    #[snafu(display("SizedCString error"), context(false))]
-    StringErr{source: SizedCStringError},
-    #[snafu(display("Invalid BMP image size, got: {got}, expected: {expected}"))]
+    #[error("SizedCString error: {0}")]
+    StringErr(#[from] SizedCStringError),
+    #[error("Invalid BMP image size, got: {got}, expected: {expected}")]
     InvalidBmpSize { got: u32, expected: u32 },
-    #[snafu(display("Only square images can be SMDH icons"))]
+    #[error("Only square images can be SMDH icons")]
     OnlySquaresAllowed,
 }
 

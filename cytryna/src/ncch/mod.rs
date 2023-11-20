@@ -1,7 +1,8 @@
 pub mod exefs;
 
-use core::fmt;
-use core::mem;
+use std::fmt;
+use std::mem;
+use std::os::raw::c_char;
 
 use crate::crypto::{self, aes128_ctr::*, KeyBag, KeyIndex, KeyType};
 use crate::string::SizedCString;
@@ -22,7 +23,7 @@ pub struct NcchHeader {
     #[derivative(Debug = "ignore")]
     content_size: u32,
     partition_id: u64,
-    maker_code: [u8; 2],
+    maker_code: [c_char; 2],
     version: u16,
     content_lock_seed_hash: u32,
     program_id: u64,

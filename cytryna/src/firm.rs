@@ -1,4 +1,4 @@
-use core::mem;
+use std::mem;
 
 use crate::crypto::sha256;
 use crate::string::SizedCString;
@@ -8,7 +8,7 @@ use crate::{align_up, CytrynaError, CytrynaResult};
 use derivative::Derivative;
 use hex_literal::hex;
 use static_assertions::assert_eq_size;
-use snafu::Snafu;
+use thiserror::Error;
 
 // source: https://gist.github.com/SciresM/cdd2266efb80175d37eabbe86f9d8c52
 static RETAIL_NAND_FIRM: [u8; 0x100] = hex!("B6724531C448657A2A2EE306457E350A10D544B42859B0E5B0BED27534CCCC2A4D47EDEA60A7DD99939950A6357B1E35DFC7FAC773B7E12E7C1481234AF141B31CF08E9F62293AA6BAAE246C15095F8B78402A684D852C680549FA5B3F14D9E838A2FB9C09A15ABB40DCA25E40A3DDC1F58E79CEC901974363A946E99B4346E8A372B6CD55A707E1EAB9BEC0200B5BA0B661236A8708D704517F43C6C38EE9560111E1405E5E8ED356C49C4FF6823D1219AFAEEB3DF3C36B62BBA88FC15BA8648F9333FD9FC092B8146C3D908F73155D48BE89D72612E18E4AA8EB9B7FD2A5F7328C4ECBFB0083833CBD5C983A25CEB8B941CC68EB017CE87F5D793ACA09ACF7");
@@ -103,17 +103,17 @@ pub enum CopyMethod {
     CpuMemcpy,
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Error, Debug)]
 pub enum FirmBuilderError {
-    #[snafu(display("Tried to add more than firware 4 sections"))]
+    #[error("Tried to add more than firware 4 sections")]
     TooManySections,
-    #[snafu(display("Arm9 entry point is missing"))]
+    #[error("Arm9 entry point is missing")]
     NoArm9Entry,
-    #[snafu(display("Arm11 entry point is missing"))]
+    #[error("Arm11 entry point is missing")]
     NoArm11Entry,
-    #[snafu(display("Firmware sections are missing"))]
+    #[error("Firmware sections are missing")]
     NoSections,
-    #[snafu(display("Signature type is missing"))]
+    #[error("Signature type is missing")]
     NoSig,
 }
 
