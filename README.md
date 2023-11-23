@@ -1,5 +1,7 @@
 # A Rust library for Nintendo 3DS file formats
 
+## Read the docs [here](https://maccraft123.github.io/cytryna/cytryna/index.html)!
+
 ## Supported format list:
 - CIA
 - FIRM
