@@ -6,6 +6,8 @@ use crate::{CytrynaResult, FromBytes};
 
 use derivative::Derivative;
 
+/// Ticket Data, excluding "Issuer" field
+/// https://www.3dbrew.org/wiki/Ticket#Ticket_Data
 #[derive(Derivative)]
 #[derivative(Debug)]
 #[repr(C, packed)]
@@ -53,9 +55,11 @@ impl FromBytes for TicketInner {
     }
 }
 
+/// Type alias for convienent usage of TicketInner
 pub type Ticket<'a> = SignedData<'a, TicketInner>;
 
 impl Ticket<'_> {
+    /// Returns the decrypted title key
     #[must_use]
     pub fn title_key(&self) -> CytrynaResult<[u8; 0x10]> {
         let mut iv = [0u8; 0x10];
@@ -70,10 +74,12 @@ impl Ticket<'_> {
             .unwrap();
         Ok(title_key)
     }
+    /// Returns the un-decrypted title key
     #[must_use]
     pub fn title_key_raw(&self) -> &[u8; 0x10] {
         &self.data().title_key
     }
+    /// Returns the common key index
     #[must_use]
     pub fn key_index(&self) -> u8 {
         self.data().key_index

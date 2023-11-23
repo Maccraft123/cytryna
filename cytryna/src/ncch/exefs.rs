@@ -4,6 +4,8 @@ use crate::VecOrSlice;
 use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
+/// A wrapper struct of ExeFs, used to store information about ExeFs compression/decryption
+/// <https://www.3dbrew.org/wiki/ExeFS>
 #[derive(Debug)]
 #[repr(C)]
 pub struct ExeFs<'a> {
@@ -13,6 +15,7 @@ pub struct ExeFs<'a> {
 }
 
 impl ExeFs<'_> {
+    /// Retrieves a file by its name
     #[must_use]
     pub fn file_by_name(&self, name: &[u8]) -> Option<VecOrSlice<u8>> {
         let header = self.inner.header.file_header_by_name(name)?;
@@ -26,6 +29,8 @@ impl ExeFs<'_> {
     }
 }
 
+/// Raw ExeFS data
+/// https://www.3dbrew.org/wiki/ExeFS
 #[derive(Derivative)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -36,12 +41,15 @@ pub struct ExeFsInner {
 }
 
 impl ExeFsInner {
+    /// Returns a file that is referenced by a given header
     #[must_use]
     pub fn file_by_header<'a>(&'a self, hdr: &'a FileHeader) -> &'a [u8] {
         &self.data[hdr.offset as usize..][..hdr.size as usize]
     }
 }
 
+/// Raw ExeFS Header
+/// https://www.3dbrew.org/wiki/ExeFS#Format
 #[derive(Clone, Derivative)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -54,10 +62,12 @@ pub struct ExeFsHeader {
 assert_eq_size!([u8; 0x200], ExeFsHeader);
 
 impl ExeFsHeader {
+    /// Returns an iterator over file headers that are used
     #[must_use]
     pub fn file_headers_used(&self) -> impl Iterator<Item = &FileHeader> {
         self.file_headers.iter().filter(|hdr| !hdr.is_unused())
     }
+    /// Returns a file header with a given filename
     #[must_use]
     pub fn file_header_by_name<'a>(&'a self, name: &[u8]) -> Option<&'a FileHeader> {
         if name.len() > 0x8 {
@@ -70,6 +80,7 @@ impl ExeFsHeader {
     }
 }
 
+/// ExeFS File header data
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub struct FileHeader {
@@ -80,6 +91,7 @@ pub struct FileHeader {
 assert_eq_size!([u8; 16], FileHeader);
 
 impl FileHeader {
+    /// Checks if a given file header is used
     #[must_use]
     fn is_unused(&self) -> bool {
         !self.name.is_zero() && self.offset == 0 && self.size == 0

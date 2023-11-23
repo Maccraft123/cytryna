@@ -1,4 +1,5 @@
 pub mod exefs;
+pub mod romfs;
 
 use std::fmt;
 use std::mem;
@@ -14,6 +15,8 @@ use derivative::Derivative;
 use modular_bitfield::prelude::*;
 use static_assertions::assert_eq_size;
 
+/// NCCH Header data
+/// <https://www.3dbrew.org/wiki/NCCH#NCCH_Header>
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -55,6 +58,7 @@ pub struct NcchHeader {
 }
 assert_eq_size!([u8; 0x200], NcchHeader);
 
+/// NCCH flags data, <https://www.3dbrew.org/wiki/NCCH#NCCH_Flags>
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub struct NcchFlags {
@@ -70,6 +74,8 @@ pub struct NcchFlags {
 assert_eq_size!([u8; 0x8], NcchFlags);
 
 bitflags! {
+    /// NCCH Content Type
+    /// https://www.3dbrew.org/wiki/NCCH#NCCH_Flags
     #[derive(Debug, Clone, Copy)]
     pub struct ContentType: u8 {
         const DATA = 0x1;
@@ -80,6 +86,8 @@ bitflags! {
         const TRIAL = 0x10;
         const _ = !0;
     }
+    /// NCCH option bit-masks
+    /// https://www.3dbrew.org/wiki/NCCH#NCCH_Flags
     #[derive(Debug, Clone, Copy)]
     pub struct NcchFlagsOptions: u8 {
         const FIXED_CRYPTO_KEY = 0x1;
@@ -90,6 +98,7 @@ bitflags! {
     }
 }
 
+/// NCCH File
 #[repr(C)]
 pub struct Ncch {
     header: NcchHeader,
@@ -97,6 +106,7 @@ pub struct Ncch {
 }
 
 impl Ncch {
+    /// Returns a reference to NCCH Header
     #[must_use]
     pub fn header(&self) -> &NcchHeader {
         &self.header
@@ -112,6 +122,7 @@ impl Ncch {
         }
         Ok(me)
     }
+    /// Check if data is encrypted
     #[must_use]
     pub fn is_encrypted(&self) -> bool {
         !self
@@ -120,6 +131,7 @@ impl Ncch {
             .options
             .contains(NcchFlagsOptions::NO_CRYPTO)
     }
+    /// Returns a region as a byte slice
     #[must_use]
     fn region(&self, offset: u32, size: u32) -> CytrynaResult<&[u8]> {
         if offset == 0 || size == 0 {
@@ -130,18 +142,22 @@ impl Ncch {
         let size = size as usize * 0x200;
         Ok(&self.data[offset..][..size])
     }
+    /// Returns a reference to "plain region"
     #[must_use]
     pub fn plain_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.plain_offset, self.header.plain_size)
     }
+    /// Returns icon/SMDH region data as a byte slice
     #[must_use]
     pub fn logo_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.logo_offset, self.header.logo_size)
     }
+    /// Returns ExeFS region data as a byte slice
     #[must_use]
     pub fn exefs_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.exefs_offset, self.header.exefs_size)
     }
+    /// Returns ExeFS region data
     #[must_use]
     pub fn exefs(&self) -> CytrynaResult<exefs::ExeFs> {
         let data = self.exefs_region()?;
@@ -160,6 +176,7 @@ impl Ncch {
             inner,
         })
     }
+    /// Returns a decrypted Exheader stored in OwnedOrBorrowed
     #[must_use]
     pub fn exheader(&self) -> CytrynaResult<OwnedOrBorrowed<Exheader>> {
         if self.header.exheader_size == 0 {
@@ -199,16 +216,19 @@ impl Ncch {
             }
         }
     }
+    /// Returns the RomFS region data as a byte slice
     #[must_use]
     pub fn romfs_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.romfs_offset, self.header.romfs_size)
     }
+    /// Returns a reference to NCCH Flags
     #[must_use]
     pub fn flags(&self) -> &NcchFlags {
         &self.header.flags
     }
 }
 
+/// AES-128 Initialization Vector used in NCCH Exheader Decryption
 #[repr(C)]
 struct Aes128Iv {
     title_id: u64,
@@ -217,6 +237,8 @@ struct Aes128Iv {
 }
 assert_eq_size!([u8; 0x10], Aes128Iv);
 
+/// NCCH Extended Header
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header>
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct Exheader {
@@ -228,6 +250,8 @@ pub struct Exheader {
 }
 assert_eq_size!([u8; 0x800], Exheader);
 
+/// Exheader SystemControlInfo
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#System_Control_Info>
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -253,6 +277,7 @@ pub struct SystemControlInfo {
 assert_eq_size!([u8; 0x200], SystemControlInfo);
 
 bitflags! {
+    /// SystemControlInfo flags
     #[derive(Debug, Clone, Copy)]
     pub struct ExheaderFlags: u8 {
         const COMPRESS_EXEFS_CODE = 0x1;
@@ -261,6 +286,7 @@ bitflags! {
     }
 }
 
+/// idk what to put here
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct CodeSetInfo {
@@ -270,6 +296,8 @@ pub struct CodeSetInfo {
 }
 assert_eq_size!([u8; 0xc], CodeSetInfo);
 
+/// Exheader Access Control Info
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#Access_Control_Info>
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct AccessControlInfo {
@@ -279,6 +307,8 @@ pub struct AccessControlInfo {
 }
 assert_eq_size!([u8; 0x200], AccessControlInfo);
 
+/// ARM11 Local system capabilities
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Local_System_Capabilities>
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -298,6 +328,8 @@ pub struct Arm11LocalSystemCaps {
 }
 assert_eq_size!([u8; 0x170], Arm11LocalSystemCaps);
 
+/// ARM11 Local system capabilities Flag0 data
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#Flag0>
 #[bitfield]
 #[derive(Debug, Clone)]
 pub struct Flag0 {
@@ -306,17 +338,27 @@ pub struct Flag0 {
     pub old3ds_system_mode: Old3dsSystemMode,
 }
 
+/// Stores the Old3DS system mode data
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#Old3DS_System_Mode>
 #[derive(Debug, Clone, BitfieldSpecifier)]
 #[bits = 4]
 pub enum Old3dsSystemMode {
+    /// Prod (64MB of usable application memory) 
     Prod64Mb = 0,
+    /// Undefined (unusable)
     Undefined,
+    /// Dev1 (96MB of usable application memory) 
     Dev1_96Mb,
+    /// Dev2 (80MB of usable application memory) 
     Dev2_80Mb,
+    /// Dev3 (72MB of usable application memory) 
     Dev3_72Mb,
+    /// Dev4 (32MB of usable application memory) 
     Dev4_32Mb,
 }
 
+/// ARM11 Local system capabilities Flag1 data
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#Flag1>
 #[bitfield]
 #[derive(Debug, Clone)]
 pub struct Flag1 {
@@ -326,15 +368,23 @@ pub struct Flag1 {
     __: B6,
 }
 
+/// ARM11 Local system capabilities New3DS system mode data
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#New3DS_System_Mode>
 #[derive(Debug, Clone)]
 #[repr(u8)]
 pub enum New3dsSystemMode {
+    /// Legacy(use Old3DS system mode)
     Legacy = 0,
+    /// Prod (124MB of usable application memory) 
     Prod124Mb,
+    /// Dev1 (178MB of usable application memory) 
     Dev1_178Mb,
+    /// Dev2 (124MB of usable application memory) 
     Dev2_124Mb,
 }
 
+/// ARM11 Local system capabilities storage info
+/// https://www.3dbrew.org/wiki/NCCH/Extended_Header#Storage_Info
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct StorageInfo {
@@ -346,6 +396,8 @@ pub struct StorageInfo {
 assert_eq_size!([u8; 0x20], StorageInfo);
 
 bitflags! {
+    /// StorageInfo's FS Access info flags
+    /// https://www.3dbrew.org/wiki/NCCH/Extended_Header#Storage_Info
     #[derive(Debug, Clone, Copy)]
     pub struct FsAccessInfo: u64 {
         const CAT_SYSTEM_APPLICATION = 0x1;
@@ -374,6 +426,7 @@ bitflags! {
     }
 }
 
+/// ARM11 Local system capabilities resource Limit Category
 #[derive(Debug, Clone)]
 #[repr(u8)]
 pub enum ResourceLimitCategory {
@@ -383,6 +436,8 @@ pub enum ResourceLimitCategory {
     Other = 3,
 }
 
+/// ARM11 Kernel Capabilities
+/// https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Kernel_Capabilities
 #[derive(Clone)]
 #[repr(C)]
 pub struct Arm11KernelCaps {
@@ -392,6 +447,7 @@ pub struct Arm11KernelCaps {
 assert_eq_size!([u8; 0x80], Arm11KernelCaps);
 
 impl Arm11KernelCaps {
+    /// Returns a Vec of decoded ARM11 Kernel capability descriptors
     #[must_use]
     fn decode_descriptors(&self) -> Vec<KernelCap> {
         let mut ret = Vec::new();
@@ -448,10 +504,13 @@ impl fmt::Debug for Arm11KernelCaps {
     }
 }
 
+/// what do i even put here
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct KernelCapRaw(u32);
 
+/// Stores the decoded ARM11 Kernel Capability descriptor
+/// https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Kernel_Capabilities
 #[derive(Debug, Clone)]
 pub enum KernelCap {
     InterruptInfo,
@@ -465,6 +524,7 @@ pub enum KernelCap {
     MapIoMemoryPageEnd,
 }
 
+/// ARM11 enabled syscall mask
 #[bitfield]
 #[derive(Clone)]
 #[repr(u32)]
@@ -476,6 +536,8 @@ pub struct SyscallMask {
 }
 
 impl SyscallMask {
+    /// Returns whether the syscall number provided is enabled in this syscall mask.
+    /// Note that other masks might have it enabled
     #[must_use]
     fn has_syscall(&self, num: u8) -> bool {
         let rem = num % 24;
@@ -527,6 +589,8 @@ impl fmt::Debug for SyscallMask {
     }
 }
 
+/// ARM11 Kernel Capabilities flag field data
+/// https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Kernel_Flags
 #[bitfield]
 #[derive(Debug, Clone)]
 #[repr(u32)]
@@ -546,6 +610,7 @@ pub struct Arm11Flags {
     __: B18,
 }
 
+/// ARM11 Memory Type
 #[derive(Debug, Clone, BitfieldSpecifier)]
 #[bits = 4]
 pub enum Arm11MemoryType {
@@ -554,6 +619,8 @@ pub enum Arm11MemoryType {
     Base,
 }
 
+/// ARM9 Access Control data
+/// https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM9_Access_Control
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -566,6 +633,7 @@ pub struct Arm9AccessControl {
 assert_eq_size!([u8; 0x10], Arm9AccessControl);
 
 bitflags! {
+    /// ARM9 Access Control Descriptor data
     #[derive(Debug, Clone, Copy)]
     // TODO: make sure this is correct
     pub struct Arm9Descriptors: u16 {

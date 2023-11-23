@@ -23,18 +23,24 @@ pub mod aes128_ctr {
 
 static KEY_BAG: OnceLock<KeyBag> = OnceLock::new();
 
+/// Contains keys used for encrypting/decrypting data
 #[derive(Clone, Debug)]
 pub struct KeyBag {
     keys: HashMap<KeyIndex, [u8; 0x10]>,
 }
 
 impl KeyBag {
+    /// Makes an instance of KeyBag
     #[must_use]
     pub fn new() -> Self {
         Self {
             keys: HashMap::new(),
         }
     }
+    /// Makes an instance of KeyBag from a string in format compatible with
+    /// keys returned by <https://github.com/citra-emu/citra/raw/master/dist/dumpkeys/DumpKeys.gm9>
+    ///
+    /// Note that this script won't dump all keys used in this library
     #[must_use]
     pub fn from_string(string: &str) -> CytrynaResult<Self> {
         let mut this = Self::new();
@@ -61,22 +67,25 @@ impl KeyBag {
         }
         Ok(this)
     }
+    /// Adds a key to KeyBag, overwriting previous data if there was any
     pub fn set_key(&mut self, idx: KeyIndex, key: [u8; 0x10]) {
         self.keys.insert(idx, key);
     }
+    /// Sets the KeyBag to be used for all crypto functions of this crate
     pub fn finalize(self) {
         let _ = KEY_BAG.set(self);
     }
-    #[must_use]
+    /// Returns a key if it is contained in global KeyBag instance
     pub fn get_key(&self, idx: KeyIndex) -> CytrynaResult<&[u8; 0x10]> {
         self.keys.get(&idx).ok_or(CytrynaError::MissingKey(idx))
     }
-    #[must_use]
+    /// Returns reference to the global KeyBag instance
     pub fn global() -> CytrynaResult<&'static Self> {
         KEY_BAG.get().ok_or(CytrynaError::NoKeyBag)
     }
 }
 
+/// Generates a normal-key from X and Y keys and a keygen constant
 #[must_use]
 pub fn keygen(x: [u8; 0x10], y: [u8; 0x10]) -> CytrynaResult<[u8; 0x10]> {
     let x = u128::from_be_bytes(x);
@@ -88,11 +97,16 @@ pub fn keygen(x: [u8; 0x10], y: [u8; 0x10]) -> CytrynaResult<[u8; 0x10]> {
         .to_be_bytes())
 }
 
+/// Is this self-documenting? I think it is
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum KeyIndex {
+    /// The generator key
     Generator,
+    /// Key contained in 3DS's AES slot
     Slot(u8, KeyType),
+    /// Index for common keyY used in Title Key decryption
     Common(u8),
+    /// Index for common normal-key used in Title Key decryption
     CommonN(u8),
 }
 
@@ -108,6 +122,7 @@ impl fmt::Display for KeyIndex {
     }
 }
 
+/// An error type for KeyIndex parsing
 #[derive(Error, Debug)]
 pub enum KeyIndexParseError {
     #[error("Failed to parse a hex number")]
@@ -149,10 +164,14 @@ impl FromStr for KeyIndex {
     }
 }
 
+/// Type of a 3DS key
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum KeyType {
+    /// KeyX
     X,
+    /// KeyY
     Y,
+    /// Normal-key
     N,
 }
 
@@ -167,12 +186,14 @@ impl fmt::Display for KeyType {
     }
 }
 
+/// Computes sha data of a byte slice
 pub fn sha256(data: &[u8]) -> [u8; 0x20] {
     let mut hasher = Sha256::new();
     hasher.update(data);
     hasher.finalize().into()
 }
 
+/// Contains signed data in a way that is generic over signed data type and signature type
 #[repr(C)]
 pub struct SignedDataInner<T: ?Sized + FromBytes + fmt::Debug, S: Signature> {
     _unused: PhantomData<T>,
@@ -183,6 +204,7 @@ pub struct SignedDataInner<T: ?Sized + FromBytes + fmt::Debug, S: Signature> {
 }
 
 impl<T: ?Sized + FromBytes + fmt::Debug, S: Signature> SignedDataInner<T, S> {
+    /// Returns stored data
     #[must_use]
     pub fn data(&self) -> &T {
         T::cast(&self.data)
@@ -204,6 +226,7 @@ where
     }
 }
 
+/// Stores SignedDataInner in a way that makes it possible to use as a return type of a function
 pub enum SignedData<'a, T: ?Sized + FromBytes + fmt::Debug> {
     Rsa4096Sha256(&'a SignedDataInner<T, Rsa4096Sha256>),
     Rsa2048Sha256(&'a SignedDataInner<T, Rsa2048Sha256>),
@@ -254,6 +277,7 @@ impl<T: ?Sized + FromBytes + fmt::Debug> SignedData<'_, T> {
             }
         }
     }
+    /// Returns a reference to data stored inside
     #[must_use]
     pub fn data(&self) -> &T {
         match self {
@@ -264,6 +288,7 @@ impl<T: ?Sized + FromBytes + fmt::Debug> SignedData<'_, T> {
     }
 }
 
+/// Stores signature type of TMD and Ticket structs in a little-endian way
 #[derive(Copy, Clone, Debug)]
 #[repr(u32)]
 pub enum SignatureType {
@@ -274,6 +299,7 @@ pub enum SignatureType {
 
 pub trait Signature: sealed_impl::Sealed {}
 
+/// RSA_4096 SHA256 signature data, including padding
 #[repr(C, packed)]
 pub struct Rsa4096Sha256 {
     sig: [u8; 0x200],
@@ -281,6 +307,7 @@ pub struct Rsa4096Sha256 {
 }
 impl Signature for Rsa4096Sha256 {}
 
+/// RSA_2048 SHA256 signature data, including padding
 #[repr(C, packed)]
 pub struct Rsa2048Sha256 {
     sig: [u8; 0x100],
@@ -288,6 +315,7 @@ pub struct Rsa2048Sha256 {
 }
 impl Signature for Rsa2048Sha256 {}
 
+/// ECDSA with SHA256 signature data, including padding
 #[repr(C, packed)]
 pub struct EcdsaSha256 {
     sig: [u8; 0x3c],

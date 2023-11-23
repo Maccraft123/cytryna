@@ -19,6 +19,8 @@ const fn align(what: u32) -> usize {
     }
 }
 
+/// CIA Header data
+/// <https://www.3dbrew.org/wiki/CIA#CIA_Header>
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -38,6 +40,7 @@ assert_eq_size!([u8; 0x2020], CiaHeader);
 
 const HDR_PAD: usize = align(mem::size_of::<CiaHeader>() as u32) - mem::size_of::<CiaHeader>();
 
+/// CIA data
 #[repr(C)]
 pub struct Cia {
     header: CiaHeader,
@@ -64,25 +67,33 @@ impl FromBytes for Cia {
 }
 
 impl Cia {
+    /// Returns a reference to CIA header
     #[must_use]
     pub fn header(&self) -> &CiaHeader {
         &self.header
     }
+    /// Returns a referene to certificate chain region as a slice.
+    /// Return type of this function will be changed when CertificateChain struct is added.
+    ///
+    /// <https://www.3dbrew.org/wiki/CIA#Certificate_Chain>
     #[must_use]
     pub fn cert_chain_region(&self) -> &[u8] {
         &self.data[..align(self.header.cert_size)]
     }
+    /// Returns a reference to Ticket region
     #[must_use]
     pub fn ticket_region(&self) -> CytrynaResult<Ticket> {
         let offset = align(self.header.cert_size);
         Ticket::from_bytes(&self.data[offset..][..align(self.header.ticket_size)])
     }
+    /// Returns a reference to Title metadata region
     pub fn tmd_region(&self) -> CytrynaResult<Tmd> {
         let offset =
             align(self.header.cert_size) + align(self.header.ticket_size);
         //Some(unsafe { mem::transmute(&self.data[offset..][..align(self.header.tmd_size)]) })
         Tmd::from_bytes(&self.data[offset..][..align(self.header.tmd_size)])
     }
+    /// Returns an iterator over contents
     #[must_use]
     pub fn content_region(&self) -> CytrynaResult<ContentRegionIter> {
         let offset = align(self.header.cert_size)
@@ -98,6 +109,7 @@ impl Cia {
             chunk_idx: 0,
         })
     }
+    /// If CIA has a Meta region, returns a reference to it, otherwise None is returned
     #[must_use]
     pub fn meta_region(&self) -> Option<&MetaRegion> {
         if self.header.meta_size != 0 {
@@ -116,20 +128,26 @@ impl Cia {
     }
 }
 
+/// Content region data
 pub struct ContentRegion<'a> {
     data: VecOrSlice<'a, u8>,
     idx: ContentIndex,
 }
 
 impl ContentRegion<'_> {
+    /// Returns a reference to data contained within
     #[must_use]
-    pub fn data(&self) -> &[u8] { self.data.as_slice() }
+    pub fn data(&self) -> &[u8] {
+        self.data.as_slice()
+    }
+    /// Returns the content index of this region
     #[must_use]
     pub fn idx(&self) -> ContentIndex {
         self.idx
     }
 }
 
+/// An iterator over content data, possibly decrypting them
 pub struct ContentRegionIter<'a> {
     tmd: Tmd<'a>,
     title_key: [u8; 0x10],
@@ -166,6 +184,9 @@ impl<'a> Iterator for ContentRegionIter<'a> {
     }
 }
 
+/// CIA Meta region
+///
+/// <https://www.3dbrew.org/wiki/CIA#Meta>
 #[repr(C)]
 pub struct MetaRegion {
     dependencies: [MaybeTitleId; 0x30],
@@ -177,15 +198,18 @@ pub struct MetaRegion {
 assert_eq_size!([u8; 0x3ac0], MetaRegion);
 
 impl MetaRegion {
+    /// Returns dependencies as an array of MaybeTitleId
     #[must_use]
     pub fn dependencies(&self) -> [MaybeTitleId; 0x30] {
         self.dependencies
     }
+    /// Returns an iterator over TitleId structs, skipping dependency fields that aren't used
     #[must_use]
     pub fn dependencies_iter(&self) -> impl Iterator<Item = TitleId> {
         let copy = self.dependencies;
         copy.into_iter().filter_map(|v| v.to_titleid().ok())
     }
+    /// Returns SMDH data contained in this region
     #[must_use]
     pub fn icon(&self) -> CytrynaResult<&Smdh> {
         Smdh::from_bytes(&self.icon)

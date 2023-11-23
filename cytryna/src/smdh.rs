@@ -11,6 +11,7 @@ use modular_bitfield::prelude::*;
 use static_assertions::assert_eq_size;
 use thiserror::Error;
 
+/// SMDH error type
 #[derive(Error, Debug)]
 pub enum SmdhError {
     #[error("Missing short description")]
@@ -31,6 +32,23 @@ pub enum SmdhError {
 
 type SmdhResult<T> = Result<T, SmdhError>;
 
+/// SMDH builder
+///
+/// # Examples
+///
+/// ```
+/// use cytryna::prelude::*;
+///
+/// let bmp_image = bmp::Image::new(48, 48);
+/// let smdh = Smdh::builder()
+///     .with_short_desc("An example")?
+///     .with_long_desc("This is an example data")?
+///     .with_publisher("Maya")?
+///     .with_icon((&bmp_image).try_into()?)
+///     .build()?;
+///
+/// # Ok::<(), cytryna::smdh::SmdhError>(())
+/// ```
 pub struct SmdhBuilder {
     short_desc: Option<SizedCStringUtf16<0x40>>,
     long_desc: Option<SizedCStringUtf16<0x80>>,
@@ -40,26 +58,32 @@ pub struct SmdhBuilder {
 }
 
 impl SmdhBuilder {
+    /// Sets the short description
     pub fn with_short_desc(&mut self, desc: &str) -> SmdhResult<&mut Self> {
         let _ = self.short_desc.insert(desc.try_into()?);
         Ok(self)
     }
+    /// Sets the long description
     pub fn with_long_desc(&mut self, desc: &str) -> SmdhResult<&mut Self> {
         let _ = self.long_desc.insert(desc.try_into()?);
         Ok(self)
     }
+    /// Sets the publisher
     pub fn with_publisher(&mut self, publisher: &str) -> SmdhResult<&mut Self> {
         let _ = self.publisher.insert(publisher.try_into()?);
         Ok(self)
     }
+    /// Sets the small icon data. If not set big icon will be shrunk down and used instead
     pub fn with_small_icon(&mut self, icon: IconData<0x240>) -> &mut Self {
         let _ = self.small_icon.insert(Box::new(icon));
         self
     }
+    /// Sets the icon data
     pub fn with_icon(&mut self, icon: IconData<0x900>) -> &mut Self {
         let _ = self.big_icon.insert(Box::new(icon));
         self
     }
+    /// Builds the SMDH
     pub fn build(&mut self) -> Result<Smdh, SmdhError> {
         let title = SmdhTitle {
             short_desc: self.short_desc.take().ok_or(SmdhError::MissingShortDesc)?,
@@ -146,11 +170,12 @@ impl SmdhBuilder {
     }
 }
 
+/// SMDH Header data
+/// https://www.3dbrew.org/wiki/SMDH
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
 pub struct Smdh {
-    #[derivative(Debug = "ignore")]
     magic: SizedCString<4>,
     version: u16,
     #[derivative(Debug = "ignore")]
@@ -172,6 +197,7 @@ pub struct Smdh {
 }
 assert_eq_size!([u8; 0x36c0], Smdh);
 
+/// SMDH EULA Version
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct EulaVersion {
@@ -196,10 +222,12 @@ impl FromBytes for Smdh {
 }
 
 impl Smdh {
+    /// Returns a byte slice pointing to data of this struct
     #[must_use]
     pub fn as_bytes(&self) -> &[u8; 0x36c0] {
         unsafe { mem::transmute(self) }
     }
+    /// Returns the SMDH builder
     #[must_use]
     pub fn builder() -> SmdhBuilder {
         SmdhBuilder {
@@ -210,46 +238,62 @@ impl Smdh {
             publisher: None,
         }
     }
+    /// Returns title data(in a given language)
     #[must_use]
     pub fn title(&self, lang: Language) -> &SmdhTitle {
         &self.titles[lang as usize]
     }
+    /// Returns age rating data(of a given region)
     #[must_use]
     pub fn age_rating(&self, region: AgeRatingRegion) -> AgeRating {
         self.age_ratings[region as usize]
     }
+    /// Returns region lockout data
     #[must_use]
     pub fn region_lockout(&self) -> RegionLockout {
         self.region_lockout
     }
+    /// Returns the matchmaker id data
     #[must_use]
     pub fn matchmaker_id(&self) -> &MatchmakerId {
         &self.matchmaker_id
     }
+    /// Returns SMDH Flags
+    /// https://www.3dbrew.org/wiki/SMDH#Flags
     #[must_use]
     pub fn flags(&self) -> SmdhFlags {
         self.flags
     }
+    /// Returns the EULA version
+    /// https://www.3dbrew.org/wiki/SMDH#EULA_Version
     #[must_use]
     pub fn eula_version(&self) -> &EulaVersion {
         &self.eula_version
     }
+    /// Returns optimal/preferred/most representative animation frame for banner animation
     #[must_use]
     pub fn optimal_animation_default_frame(&self) -> f32 {
         self.optimal_animation_default_frame
     }
+    /// Returns the CEC/StreetPass id
     #[must_use]
     pub fn cec_id(&self) -> u32 {
         self.cec_id
     }
+    /// Returns a reference to big icon data
+    #[must_use]
     pub fn big_icon(&self) -> &IconData<0x900> {
         &self.icon.big
     }
+    /// Returns a reference to small icon data
+    #[must_use]
     pub fn small_icon(&self) -> &IconData<0x240> {
         &self.icon.small
     }
 }
 
+/// Age Rating Region index
+/// https://www.3dbrew.org/wiki/SMDH#Region_Specific_Game_Age_Ratings
 #[derive(Debug, Clone, Copy)]
 #[repr(usize)]
 pub enum AgeRatingRegion {
@@ -267,6 +311,8 @@ pub enum AgeRatingRegion {
 }
 
 bitflags! {
+    /// Age Rating Data
+    /// https://www.3dbrew.org/wiki/SMDH#Region_Specific_Game_Age_Ratings
     #[derive(Debug, Clone, Copy)]
     pub struct AgeRating: u8 {
         const ENABLED = 0x80;
@@ -275,6 +321,8 @@ bitflags! {
         const _ = !0;
     }
 
+    /// Region Lockout Data
+    /// https://www.3dbrew.org/wiki/SMDH#Region_Lockout
     #[derive(Debug, Clone, Copy)]
     pub struct RegionLockout: u32 {
         const JAPAN = 0x1;
@@ -287,6 +335,8 @@ bitflags! {
         const REGION_FREE = 0x7fff_ffff;
     }
 
+    /// SMDH Flags data
+    /// https://www.3dbrew.org/wiki/SMDH#Flags
     #[derive(Debug, Clone, Copy)]
     pub struct SmdhFlags: u32 {
         const VISIBLE_IN_HOMEMENU = 0x1;
@@ -303,6 +353,8 @@ bitflags! {
     }
 }
 
+/// Matchmaker ID data
+/// https://www.3dbrew.org/wiki/SMDH#Match_Maker_IDs
 #[derive(Debug, Clone)]
 #[repr(C, packed)]
 pub struct MatchmakerId {
@@ -312,16 +364,20 @@ pub struct MatchmakerId {
 assert_eq_size!([u8; 0xc], MatchmakerId);
 
 impl MatchmakerId {
+    /// Returns the ID
     #[must_use]
     pub fn id(&self) -> u32 {
         self.id
     }
+    /// Returns the "bit ID"
     #[must_use]
     pub fn bit_id(&self) -> u64 {
         self.bit_id
     }
 }
 
+/// SMDH Title language index
+/// https://www.3dbrew.org/wiki/SMDH#Application_Titles
 #[derive(Debug, Clone, Copy)]
 #[repr(usize)]
 pub enum Language {
@@ -339,6 +395,8 @@ pub enum Language {
     TraditionalChinese,
 }
 
+/// SMDH Application title data
+/// https://www.3dbrew.org/wiki/SMDH#Application_Titles
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct SmdhTitle {
@@ -349,20 +407,25 @@ pub struct SmdhTitle {
 assert_eq_size!([u8; 0x200], SmdhTitle);
 
 impl SmdhTitle {
+    /// Returns the short description data
     #[must_use]
     pub fn short_desc(&self) -> &SizedCStringUtf16<0x40> {
         &self.short_desc
     }
+    /// Returns the long description data
     #[must_use]
     pub fn long_desc(&self) -> &SizedCStringUtf16<0x80> {
         &self.long_desc
     }
+    /// Returns publisher data
     #[must_use]
     pub fn publisher(&self) -> &SizedCStringUtf16<0x40> {
         &self.publisher
     }
 }
 
+/// SMDH Icon data wrapper
+/// https://www.3dbrew.org/wiki/SMDH#Icon_graphics
 #[derive(Clone)]
 #[repr(C)]
 pub struct SmdhIcon {
@@ -371,12 +434,14 @@ pub struct SmdhIcon {
 }
 assert_eq_size!([u8; 0x1680], SmdhIcon);
 
+/// SMDH Icon Data(actual)
 #[derive(Clone)]
 #[repr(C)]
 pub struct IconData<const SIZE: usize> {
     data: [Rgb565Pixel; SIZE],
 }
 
+/// SMDH Pixel data, it's actually BGR and not RGB
 #[bitfield]
 #[derive(Clone, Debug)]
 #[repr(u16)]
@@ -386,7 +451,8 @@ pub struct Rgb565Pixel {
     r: B5,
 }
 
-// shamelessly stolen from smdhtool
+/// SMDH icon tile order
+/// shamelessly stolen from smdhtool
 const TILE_ORDER: [u8; 64] = [
     00, 01, 08, 09, 02, 03, 10, 11, 16, 17, 24, 25, 18, 19, 26, 27, 04, 05, 12, 13, 06, 07, 14, 15,
     20, 21, 28, 29, 22, 23, 30, 31, 32, 33, 40, 41, 34, 35, 42, 43, 48, 49, 56, 57, 50, 51, 58, 59,
@@ -394,10 +460,12 @@ const TILE_ORDER: [u8; 64] = [
 ];
 
 impl<const SIZE: usize> IconData<SIZE> {
+    /// Returns the raw imge data
     #[must_use]
     pub fn raw_data(&self) -> &[Rgb565Pixel; SIZE] {
         &self.data
     }
+    /// Gets the width of the icon
     #[must_use]
     pub fn width() -> u8 {
         if SIZE == 0x240 {
@@ -408,6 +476,7 @@ impl<const SIZE: usize> IconData<SIZE> {
             unreachable!("how the f-")
         }
     }
+    /// Returns an iterator over x and y coordinates and an immutable refernce to Rgb565Pixel in that coordinates
     #[must_use]
     pub fn pixel_iter(&self) -> PixelIterator<SIZE> {
         PixelIterator {
@@ -418,6 +487,7 @@ impl<const SIZE: usize> IconData<SIZE> {
             k: 0,
         }
     }
+    /// Returns an iterator over x and y coordinates and a mutable refernce to Rgb565Pixel in that coordinates
     #[must_use]
     pub fn pixel_iter_mut(&mut self) -> PixelIteratorMut<SIZE> {
         PixelIteratorMut {
@@ -428,6 +498,7 @@ impl<const SIZE: usize> IconData<SIZE> {
             k: 0,
         }
     }
+    /// Copies this icon into a new BMP Image
     #[must_use]
     pub fn to_bmp(&self) -> bmp::Image {
         let mut img = bmp::Image::new(Self::width() as u32, Self::width() as u32);
@@ -467,6 +538,7 @@ impl<const SIZE: usize> TryFrom<&bmp::Image> for IconData<SIZE> {
     }
 }
 
+/// An iterator over x and y coordinates and a mutable refernce to Rgb565Pixel in that coordinates
 #[derive(Debug)]
 pub struct PixelIteratorMut<'a, const SIZE: usize> {
     inner: slice::IterMut<'a, Rgb565Pixel>,
@@ -498,6 +570,7 @@ impl<'a, const SIZE: usize> Iterator for PixelIteratorMut<'a, SIZE> {
     }
 }
 
+/// An iterator over x and y coordinates and an immutable refernce to Rgb565Pixel in that coordinates
 #[derive(Debug)]
 pub struct PixelIterator<'a, const SIZE: usize> {
     inner: slice::Iter<'a, Rgb565Pixel>,

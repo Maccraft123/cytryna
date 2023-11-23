@@ -15,6 +15,7 @@ use std::ops::Deref;
 
 use thiserror::Error;
 
+/// Low-effort catch-all error type for cytryna library
 #[derive(Error, Debug)]
 pub enum CytrynaError {
     #[error("Invalid magic bytes")]
@@ -57,11 +58,25 @@ pub enum CytrynaError {
 
 pub type CytrynaResult<T> = std::result::Result<T, CytrynaError>;
 
+/// Simple trait to implement safe conversions from bytes
 pub trait FromBytes {
+    /// Minimum size of byte slice for a type to be valid, it's struct size for non-DST structs and
+    /// header size for DST structs
     fn min_size() -> usize;
+
+    /// Ensures that a byte slice is valid, checking everything that needs to be chcked in order
+    /// for struct to not contain invalid values for its type
     fn bytes_ok(_: &[u8]) -> CytrynaResult<()>;
+
+    /// Casts a byte slice to Self, it's a required method because DST and non-DST references have
+    /// different sizes and I wasn't able to figure out a way to not do it this way
     fn cast(_: &[u8]) -> &Self;
+
+    /// Ensures that in-struct hash value is valid. Not required because not all structs have a
+    /// field for hash value
     fn hash_ok(&self) -> bool { true }
+
+    /// A function that brings it all together
     fn from_bytes(bytes: &[u8]) -> CytrynaResult<&Self> {
         Self::bytes_ok(bytes)?;
         let ret = Self::cast(bytes);
@@ -82,6 +97,20 @@ pub mod prelude {
     pub use crate::ticket::Ticket;
 }
 
+/// Aligns a value up, used internally
+///
+/// # Examples
+/// ```ignore
+/// use cytryna::align_up;
+///
+/// let alignment = 0x10;
+/// let val_unaligned = 0x37;
+/// let val_aligned = 0x40;
+///
+/// assert_eq!(align_up(val_unaligned, alignment), 0x40);
+/// assert_eq!(align_up(val_aligned, alignment), 0x40);
+/// ```
+///
 pub(crate) const fn align_up(val: u32, alignment: u32) -> u32 {
     if val % alignment != 0 {
         val + (alignment - (val % alignment))
@@ -90,6 +119,8 @@ pub(crate) const fn align_up(val: u32, alignment: u32) -> u32 {
     }
 }
 
+/// Contains either a box pointer to a type, or a reference to it, used as a return type for
+/// functions that may or may not decompress/decrypt data
 #[derive(Debug, Clone)]
 pub enum OwnedOrBorrowed<'a, T> {
     Owned(Box<T>),
@@ -106,6 +137,8 @@ impl<T> Deref for OwnedOrBorrowed<'_, T> {
     }
 }
 
+/// Contains either a (borrowed) byte slice or an (owned) Vec, used in the the same ways
+/// OwnedOrBorrowed is used, but limited to arrays
 #[derive(Debug, Clone)]
 pub enum VecOrSlice<'a, T> {
     V(Vec<T>),
@@ -113,6 +146,7 @@ pub enum VecOrSlice<'a, T> {
 }
 
 impl<T> VecOrSlice<'_, T> {
+    /// Borrows internal value and returns a slice
     fn as_slice(&self) -> &[T] {
         match self {
             Self::V(vec) => vec,
@@ -125,5 +159,20 @@ impl<T> Deref for VecOrSlice<'_, T> {
     type Target = [T];
     fn deref(&self) -> &[T] {
         self.as_slice()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn check_align_up() {
+        use super::align_up;
+
+        let alignment = 0x10;
+        let val_unaligned = 0x37;
+        let val_aligned = 0x40;
+
+        assert_eq!(align_up(val_unaligned, alignment), 0x40);
+        assert_eq!(align_up(val_aligned, alignment), 0x40);
     }
 }

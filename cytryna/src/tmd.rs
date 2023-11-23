@@ -8,6 +8,8 @@ use bitflags::bitflags;
 use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
+/// TMD Header, excluding Signature Issuer
+/// https://www.3dbrew.org/wiki/Title_metadata#Header
 #[derive(Derivative)]
 #[derivative(Debug)]
 #[repr(C, packed)] // TODO: remove packing and copy from fields
@@ -54,17 +56,21 @@ impl FromBytes for TmdInner {
     }
 }
 
+/// A type alias for convienency
 pub type Tmd<'a> = SignedData<'a, TmdInner>;
 
 impl<'a> Tmd<'a> {
+    /// Returns the Title ID of this TMD if it's a valid TitleId instance
     #[must_use]
     pub fn title_id(&self) -> CytrynaResult<TitleId> {
         self.data().title_id.to_titleid()
     }
+    /// Returns the contet count
     #[must_use]
     pub fn content_count(&self) -> u16 {
         u16::from_be_bytes(self.data().content_count)
     }
+    /// Returns slice of content chunk
     #[must_use]
     pub fn content_chunks(&self) -> &[ContentChunk] {
         let ptr = ptr::addr_of!(self.data().content_chunk_records);
@@ -78,6 +84,8 @@ impl<'a> Tmd<'a> {
     }
 }
 
+/// Content Index
+/// https://www.3dbrew.org/wiki/Title_metadata#Content_Index
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum ContentIndex {
@@ -86,6 +94,8 @@ pub enum ContentIndex {
     Dlp = 2,
 }
 
+/// Content chunk record
+/// https://www.3dbrew.org/wiki/Title_metadata#Content_chunk_records
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ContentChunk {
@@ -99,32 +109,40 @@ pub struct ContentChunk {
 assert_eq_size!([u8; 0x30], ContentChunk);
 
 impl ContentChunk {
+    /// Returns the content ID
     #[must_use]
     pub fn id(&self) -> u32 {
         u32::from_be_bytes(self.id)
     }
+    /// Returns ContentIndex of this content chunk
     #[must_use]
     pub fn idx(&self) -> ContentIndex {
         self.idx
     }
+    /// Returns the content type
     #[must_use]
     pub fn ty(&self) -> ContentType {
         ContentType::from_bits_retain(u16::from_be_bytes(self.ty))
     }
+    /// Returns size of content referenced by this chunk
     #[must_use]
     pub fn size(&self) -> u64 {
         u64::from_be_bytes(self.size)
     }
+    /// Returns the hash
     #[must_use]
     pub fn hash(&self) -> &[u8; 0x20] {
         &self.hash
     }
+    /// Checks if this content chunk is all zeroed out
     #[must_use]
     pub fn is_nil(&self) -> bool {
         self.ty == [0, 0] && self.size == [0; 8] && self.hash.iter().all(|v| *v == 0)
     }
 }
 
+/// Content info record data
+/// https://www.3dbrew.org/wiki/Title_metadata#Content_Info_Records
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ContentInfo {
@@ -150,6 +168,8 @@ impl fmt::Debug for ContentInfo {
 }
 
 bitflags! {
+    /// Content type flags
+    /// https://www.3dbrew.org/wiki/Title_metadata#Content_Type_flags
     #[derive(Debug, Clone, Copy)]
     pub struct ContentType: u16 {
         const ENCRYPTED = 0x1;

@@ -15,6 +15,8 @@ static RETAIL_NAND_FIRM: [u8; 0x100] = hex!("B6724531C448657A2A2EE306457E350A10D
 static RETAIL_NTR_FIRM: [u8; 0x100] = hex!("37E96B10BAF28C74A710EF35824C93F5FBB341CEE4FB446CE4D290ABFCEFACB063A9B55B3E8A65511D900C5A6E9403AAB5943CEF3A1E882B77D2347942B9E9EB0D7566370F0CB7310C38CB4AC940D1A6BB476BCC2C487D1C532120F1D2A37DDB3E36F8A2945BD8B16FB354980384998ECC380CD5CF8530F1DAD2FD74BA35ACB9C9DA2C131CB295736AE7EFA0D268EE01872EF033058ABA07B5C684EAD60D76EA84A18D866307AAAAB764786E396F2F8B630E60E30E3F1CD8A67D02F0A88152DE7A9E0DD5E64AB7593A3701E4846B6F338D22FD455D45DF212C5577266AA8C367AE6E4CE89DF41691BF1F7FE58F2261F5D251DF36DE9F5AF1F368E650D576810B");
 static RETAIL_SPI_FIRM: [u8; 0x100] = RETAIL_NTR_FIRM;
 
+/// FIRM header data
+/// <https://www.3dbrew.org/wiki/FIRM#FIRM_Header>
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -31,34 +33,42 @@ pub struct FirmHeader {
 assert_eq_size!([u8; 0x200], FirmHeader);
 
 impl FirmHeader {
+    /// Returns the boot priority, higher value = higher boot priority
     #[must_use]
     pub fn boot_priority(&self) -> u32 {
         self.boot_priority
     }
+    /// Returns entry point address for the ARM11 CPU
     #[must_use]
     pub fn arm11_entrypoint(&self) -> u32 {
         self.arm11_entrypoint
     }
+    /// Returns entry point address for ARM9 CPU
     #[must_use]
     pub fn arm9_entrypoint(&self) -> u32 {
         self.arm9_entrypoint
     }
+    /// Returns a reference to array of section headers
     #[must_use]
     pub fn sections(&self) -> &[SectionHeader; 4] {
         &self.firmware_section_headers
     }
+    /// Returns an iterator over section headers, ignoring headers that aren't used(have size of 0)
     #[must_use]
     pub fn section_iter(&self) -> impl Iterator<Item = &SectionHeader> {
         self.firmware_section_headers
             .iter()
             .filter(|section| section.size != 0)
     }
+    /// Returns a reference to raw signature data
     #[must_use]
     pub fn sig(&self) -> &[u8; 0x100] {
         &self.rsa2048_sig
     }
 }
 
+/// FIRM Section Header
+/// <https://www.3dbrew.org/wiki/FIRM#Firmware_Section_Headers>
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -72,6 +82,7 @@ pub struct SectionHeader {
 assert_eq_size!([u8; 0x30], SectionHeader);
 
 impl SectionHeader {
+    /// Makes an empty header
     pub(crate) fn empty() -> SectionHeader {
         Self {
             offset: 0,
@@ -81,28 +92,41 @@ impl SectionHeader {
             hash: [0u8; 0x20],
         }
     }
+    /// Returns offset in FIRM file of this section
+    #[must_use]
     pub fn offset(&self) -> u32 {
         self.offset
     }
+    /// Returns the load address of this sectoin
+    #[must_use]
     pub fn load_addr(&self) -> u32 {
         self.phys_addr
     }
+    /// Returns the copy method of this section
+    #[must_use]
     pub fn copy_method(&self) -> CopyMethod {
         self.copy_method
     }
+    /// Returns raw SHA256 hash data of this section
+    #[must_use]
     pub fn hash(&self) -> &[u8; 0x20] {
         &self.hash
     }
 }
 
+/// Contains copy method of a section
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
 pub enum CopyMethod {
+    /// NDMA
     Ndma = 0,
+    /// XDMA
     Xdma,
+    /// memcpy()
     CpuMemcpy,
 }
 
+/// An error type for FirmBuilder
 #[derive(Error, Debug)]
 pub enum FirmBuilderError {
     #[error("Tried to add more than firware 4 sections")]
@@ -117,14 +141,20 @@ pub enum FirmBuilderError {
     NoSig,
 }
 
+/// Contains signature data or sighax signature type
 #[derive(Debug, Clone)]
 pub enum FirmSignature {
+    /// Sighaxed signature for NAND-booting
     RetailSighaxNand,
+    /// Sighaxed signature for ntrboot
     RetailSighaxNtr,
+    /// Sighaxed signature for SPI-boot
     RetailSighaxSpi,
+    /// Custom signature data
     Custom(Box::<[u8; 0x100]>)
 }
 
+/// FIRM builder
 #[derive(Debug, Clone)]
 pub struct FirmBuilder {
     boot_priority: u32,
@@ -135,22 +165,27 @@ pub struct FirmBuilder {
 }
 
 impl FirmBuilder {
+    /// Sets the boot priority, default is 0
     pub fn boot_priority(&mut self, val: u32) -> &mut Self {
         self.boot_priority = val;
         self
     }
+    /// Sets the ARM11 entry point
     pub fn arm11_entrypoint(&mut self, val: u32) -> &mut Self {
         self.arm11_entrypoint = Some(val);
         self
     }
+    /// Sets the ARM9 entry point
     pub fn arm9_entrypoint(&mut self, val: u32) -> &mut Self {
         self.arm9_entrypoint = Some(val);
         self
     }
+    /// Sets the signature
     pub fn signature(&mut self, sig: FirmSignature) -> &mut Self {
         self.signature = Some(sig);
         self
     }
+    /// Adds a FirmwareSection
     pub fn add_fw_section(
         &mut self,
         section: FirmwareSection,
@@ -163,10 +198,12 @@ impl FirmBuilder {
         *slot = Some(section);
         Ok(self)
     }
+    /// Overrides a section of a given index
     pub fn override_section(&mut self, which: usize, section: FirmwareSection) -> &mut Self {
         self.fw_sections[which] = Some(section);
         self
     }
+    /// Builds the FIRM
     pub fn build(&mut self) -> Result<Vec<u8>, FirmBuilderError> {
         let arm11_entrypoint = self
             .arm11_entrypoint
@@ -269,6 +306,7 @@ mod tests {
     }
 }
 
+/// Contains Firmware Section data used in FIRM building
 #[derive(Debug, Clone)]
 pub struct FirmwareSection {
     data: Vec<u8>,
@@ -277,6 +315,7 @@ pub struct FirmwareSection {
 }
 
 impl FirmwareSection {
+    /// Creates an instance of FirmwareSection
     pub fn new(data: Vec<u8>, addr: u32, copy_method: CopyMethod) -> Self {
         Self {
             data,
@@ -286,6 +325,8 @@ impl FirmwareSection {
     }
 }
 
+/// FIRM file
+/// <https://www.3dbrew.org/wiki/FIRM>
 #[repr(C)]
 pub struct Firm {
     header: FirmHeader,
@@ -317,6 +358,7 @@ impl FromBytes for Firm {
 }
 
 impl Firm {
+    /// Returns the builder for creating FIRM files
     #[must_use]
     pub fn builder() -> FirmBuilder {
         FirmBuilder {
@@ -327,11 +369,13 @@ impl Firm {
             signature: None,
         }
     }
+    /// Returns section data as a byte slice of a given header
     #[must_use]
     pub fn section_data(&self, section: &SectionHeader) -> &[u8] {
         let offset = section.offset as usize - mem::size_of::<FirmHeader>();
         &self.data[offset..][..section.size as usize]
     }
+    /// Returns a reference to FIRM Header
     #[must_use]
     pub fn header(&self) -> &FirmHeader {
         &self.header
