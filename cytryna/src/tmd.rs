@@ -9,7 +9,7 @@ use derivative::Derivative;
 use static_assertions::assert_eq_size;
 
 /// TMD Header, excluding Signature Issuer
-/// https://www.3dbrew.org/wiki/Title_metadata#Header
+/// <https://www.3dbrew.org/wiki/Title_metadata#Header>
 #[derive(Derivative)]
 #[derivative(Debug)]
 #[repr(C, packed)] // TODO: remove packing and copy from fields
@@ -85,7 +85,7 @@ impl<'a> Tmd<'a> {
 }
 
 /// Content Index
-/// https://www.3dbrew.org/wiki/Title_metadata#Content_Index
+/// <https://www.3dbrew.org/wiki/Title_metadata#Content_Index>
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum ContentIndex {
@@ -95,7 +95,7 @@ pub enum ContentIndex {
 }
 
 /// Content chunk record
-/// https://www.3dbrew.org/wiki/Title_metadata#Content_chunk_records
+/// <https://www.3dbrew.org/wiki/Title_metadata#Content_chunk_records>
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ContentChunk {
@@ -142,7 +142,7 @@ impl ContentChunk {
 }
 
 /// Content info record data
-/// https://www.3dbrew.org/wiki/Title_metadata#Content_Info_Records
+/// <https://www.3dbrew.org/wiki/Title_metadata#Content_Info_Records>
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ContentInfo {

@@ -30,7 +30,7 @@ impl ExeFs<'_> {
 }
 
 /// Raw ExeFS data
-/// https://www.3dbrew.org/wiki/ExeFS
+/// <https://www.3dbrew.org/wiki/ExeFS>
 #[derive(Derivative)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -49,7 +49,7 @@ impl ExeFsInner {
 }
 
 /// Raw ExeFS Header
-/// https://www.3dbrew.org/wiki/ExeFS#Format
+/// <https://www.3dbrew.org/wiki/ExeFS#Format>
 #[derive(Clone, Derivative)]
 #[derivative(Debug)]
 #[repr(C)]

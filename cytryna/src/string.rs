@@ -17,13 +17,13 @@ pub struct SizedCString<const SIZE: usize>([u8; SIZE]);
 
 impl<const SIZE: usize> SizedCString<SIZE> {
     /// Returns a reference to string stored within, or str::Utf8Error if it's not valid UTF-8 data
-    /// https://doc.rust-lang.org/std/str/fn.from_utf8.html
+    /// <https://doc.rust-lang.org/std/str/fn.from_utf8.html>
     #[must_use]
     pub fn as_str(&self) -> Result<&str, str::Utf8Error> {
         str::from_utf8(&self.0)
     }
     /// Converts to a string, replacing invalid UTF-8 sequences with replacement character
-    /// https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy
+    /// <https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy>
     #[must_use]
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(&self.0)
@@ -55,14 +55,14 @@ pub struct SizedCStringUtf16<const SIZE: usize> {
 
 impl<const SIZE: usize> SizedCStringUtf16<SIZE> {
     /// Converts a SizedCStringUtf16 to a Rust String, returing an error on any invalid data
-    /// https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf16
+    /// <https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf16>
     #[must_use]
     pub fn to_string(&self) -> Result<String, string::FromUtf16Error> {
         String::from_utf16(&self.data)
     }
     /// Converts a SizedCStringUtf16 to a Rust String, replacing invalid data with the replacement
     /// character
-    /// https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf16_lossy
+    /// <https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf16_lossy>
     #[must_use]
     pub fn to_string_lossy(&self) -> String {
         String::from_utf16_lossy(&self.data)

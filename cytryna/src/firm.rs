@@ -275,7 +275,7 @@ impl FirmBuilder {
 #[cfg(test)]
 mod tests {
     use crate::{FromBytes};
-    use super::{Firm, FirmwareSection, FirmSignature, CopyMethod};
+    use super::{Firm, FirmwareSection, FirmSignature};
     #[test]
     fn test_firm_building() {
         let input = include_bytes!("../testdata/fastboot3DS.firm");

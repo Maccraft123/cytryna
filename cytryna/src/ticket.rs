@@ -7,7 +7,7 @@ use crate::{CytrynaResult, FromBytes};
 use derivative::Derivative;
 
 /// Ticket Data, excluding "Issuer" field
-/// https://www.3dbrew.org/wiki/Ticket#Ticket_Data
+/// <https://www.3dbrew.org/wiki/Ticket#Ticket_Data>
 #[derive(Derivative)]
 #[derivative(Debug)]
 #[repr(C, packed)]

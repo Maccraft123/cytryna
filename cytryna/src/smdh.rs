@@ -171,7 +171,7 @@ impl SmdhBuilder {
 }
 
 /// SMDH Header data
-/// https://www.3dbrew.org/wiki/SMDH
+/// <https://www.3dbrew.org/wiki/SMDH>
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
@@ -259,13 +259,13 @@ impl Smdh {
         &self.matchmaker_id
     }
     /// Returns SMDH Flags
-    /// https://www.3dbrew.org/wiki/SMDH#Flags
+    /// <https://www.3dbrew.org/wiki/SMDH#Flags>
     #[must_use]
     pub fn flags(&self) -> SmdhFlags {
         self.flags
     }
     /// Returns the EULA version
-    /// https://www.3dbrew.org/wiki/SMDH#EULA_Version
+    /// <https://www.3dbrew.org/wiki/SMDH#EULA_Version>
     #[must_use]
     pub fn eula_version(&self) -> &EulaVersion {
         &self.eula_version
@@ -293,7 +293,7 @@ impl Smdh {
 }
 
 /// Age Rating Region index
-/// https://www.3dbrew.org/wiki/SMDH#Region_Specific_Game_Age_Ratings
+/// <https://www.3dbrew.org/wiki/SMDH#Region_Specific_Game_Age_Ratings>
 #[derive(Debug, Clone, Copy)]
 #[repr(usize)]
 pub enum AgeRatingRegion {
@@ -354,7 +354,7 @@ bitflags! {
 }
 
 /// Matchmaker ID data
-/// https://www.3dbrew.org/wiki/SMDH#Match_Maker_IDs
+/// <https://www.3dbrew.org/wiki/SMDH#Match_Maker_IDs>
 #[derive(Debug, Clone)]
 #[repr(C, packed)]
 pub struct MatchmakerId {
@@ -377,7 +377,7 @@ impl MatchmakerId {
 }
 
 /// SMDH Title language index
-/// https://www.3dbrew.org/wiki/SMDH#Application_Titles
+/// <https://www.3dbrew.org/wiki/SMDH#Application_Titles>
 #[derive(Debug, Clone, Copy)]
 #[repr(usize)]
 pub enum Language {
@@ -396,7 +396,7 @@ pub enum Language {
 }
 
 /// SMDH Application title data
-/// https://www.3dbrew.org/wiki/SMDH#Application_Titles
+/// <https://www.3dbrew.org/wiki/SMDH#Application_Titles>
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct SmdhTitle {
@@ -425,7 +425,7 @@ impl SmdhTitle {
 }
 
 /// SMDH Icon data wrapper
-/// https://www.3dbrew.org/wiki/SMDH#Icon_graphics
+/// <https://www.3dbrew.org/wiki/SMDH#Icon_graphics>
 #[derive(Clone)]
 #[repr(C)]
 pub struct SmdhIcon {

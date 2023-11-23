@@ -384,7 +384,7 @@ pub enum New3dsSystemMode {
 }
 
 /// ARM11 Local system capabilities storage info
-/// https://www.3dbrew.org/wiki/NCCH/Extended_Header#Storage_Info
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#Storage_Info>
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct StorageInfo {
@@ -437,7 +437,7 @@ pub enum ResourceLimitCategory {
 }
 
 /// ARM11 Kernel Capabilities
-/// https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Kernel_Capabilities
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Kernel_Capabilities>
 #[derive(Clone)]
 #[repr(C)]
 pub struct Arm11KernelCaps {
@@ -510,7 +510,7 @@ impl fmt::Debug for Arm11KernelCaps {
 pub struct KernelCapRaw(u32);
 
 /// Stores the decoded ARM11 Kernel Capability descriptor
-/// https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Kernel_Capabilities
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Kernel_Capabilities>
 #[derive(Debug, Clone)]
 pub enum KernelCap {
     InterruptInfo,
@@ -590,7 +590,7 @@ impl fmt::Debug for SyscallMask {
 }
 
 /// ARM11 Kernel Capabilities flag field data
-/// https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Kernel_Flags
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Kernel_Flags>
 #[bitfield]
 #[derive(Debug, Clone)]
 #[repr(u32)]
@@ -620,7 +620,7 @@ pub enum Arm11MemoryType {
 }
 
 /// ARM9 Access Control data
-/// https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM9_Access_Control
+/// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM9_Access_Control>
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 #[repr(C)]
