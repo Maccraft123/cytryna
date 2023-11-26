@@ -24,8 +24,8 @@ pub enum SmdhError {
     MissingIcon,
     #[error("SizedCString error: {0}")]
     StringErr(#[from] SizedCStringError),
-    #[error("Invalid BMP image size, got: {got}, expected: {expected}")]
-    InvalidBmpSize { got: u32, expected: u32 },
+    #[error("Invalid image size, got: {got}, expected: {expected}")]
+    InvalidImageSize { got: u32, expected: u32 },
     #[error("Only square images can be SMDH icons")]
     OnlySquaresAllowed,
 }
@@ -451,6 +451,31 @@ pub struct Rgb565Pixel {
     r: B5,
 }
 
+impl Rgb565Pixel {
+    /// Copies an image::Pixel<Subpixel = u8> into Rgb565Pixel
+    /// It is not implemented as a From trait impl as that makes a compiler error
+    fn from_image_pixel_subpixel_u8<T>(pixel: T) -> Self
+    where
+        T: image::Pixel<Subpixel = u8>,
+    {
+        let rgb = pixel.to_rgb();
+        Self::new()
+            .with_r(rgb.0[0] << 3)
+            .with_g(rgb.0[1] << 4)
+            .with_b(rgb.0[2] << 3)
+    }
+    /*fn from_image_pixel_subpixel_f32<T>(pixel: T) -> Self
+    where
+        T: image::Pixel<Subpixel = f32>,
+    {
+        let rgb = pixel.to_rgb();
+        Self::new()
+            .with_r((rgb.0[0] * 31.0) as u8) // scale from 0.0-1.0 to 0-31
+            .with_g((rgb.0[1] * 63.0) as u8) // scale from 0.0-1.0 to 0-63
+            .with_b((rgb.0[2] * 31.0) as u8) // scale from 0.0-1.0 to 0-31
+    }*/
+}
+
 /// SMDH icon tile order
 /// shamelessly stolen from smdhtool
 const TILE_ORDER: [u8; 64] = [
@@ -521,7 +546,7 @@ impl<const SIZE: usize> TryFrom<&bmp::Image> for IconData<SIZE> {
             return Err(SmdhError::OnlySquaresAllowed);
         }
         if src.get_width() * src.get_width() != SIZE as u32 {
-            return Err(SmdhError::InvalidBmpSize {
+            return Err(SmdhError::InvalidImageSize {
                 got: src.get_width() * src.get_width(),
                 expected: SIZE as u32,
             });
@@ -533,6 +558,30 @@ impl<const SIZE: usize> TryFrom<&bmp::Image> for IconData<SIZE> {
             rgb.set_r(rgb888.r >> 3);
             rgb.set_g(rgb888.g >> 2);
             rgb.set_b(rgb888.b >> 3);
+        }
+        Ok(this)
+    }
+}
+
+impl<const SIZE: usize> TryFrom<&image::DynamicImage> for IconData<SIZE> {
+    type Error = SmdhError;
+
+    fn try_from(src: &image::DynamicImage) -> Result<Self, Self::Error> {
+        if src.width() != src.height() {
+            return Err(SmdhError::OnlySquaresAllowed);
+        }
+        if src.width() * src.width() != SIZE as u32 {
+            return Err(SmdhError::InvalidImageSize {
+                got: src.width() * src.width(),
+                expected: SIZE as u32,
+            });
+        }
+
+        let data: [Rgb565Pixel; SIZE] = [0u16; SIZE].map(|v| v.into());
+        let src = src.to_rgb8();
+        let mut this = Self { data };
+        for (x, y, rgb) in this.pixel_iter_mut() {
+            *rgb = Rgb565Pixel::from_image_pixel_subpixel_u8(src.get_pixel(x as u32, y as u32).to_owned());
         }
         Ok(this)
     }
