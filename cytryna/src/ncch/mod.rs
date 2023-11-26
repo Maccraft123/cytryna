@@ -11,8 +11,8 @@ use crate::titleid::MaybeTitleId;
 use crate::{CytrynaError, CytrynaResult, OwnedOrBorrowed};
 
 use bitflags::bitflags;
+use bitfield_struct::bitfield;
 use derivative::Derivative;
-use modular_bitfield::prelude::*;
 use static_assertions::assert_eq_size;
 
 /// NCCH Header data
@@ -330,18 +330,20 @@ assert_eq_size!([u8; 0x170], Arm11LocalSystemCaps);
 
 /// ARM11 Local system capabilities Flag0 data
 /// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#Flag0>
-#[bitfield]
-#[derive(Debug, Clone)]
+#[bitfield(u8)]
 pub struct Flag0 {
-    pub ideal_proccessor: B2,
-    pub affinity_mask: B2,
-    pub old3ds_system_mode: Old3dsSystemMode,
+    #[bits(2)]
+    ideal_proccessor: u8,
+    #[bits(2)]
+    affinity_mask: u8,
+    #[bits(4)]
+    old3ds_system_mode: Old3dsSystemMode,
 }
 
 /// Stores the Old3DS system mode data
 /// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#Old3DS_System_Mode>
-#[derive(Debug, Clone, BitfieldSpecifier)]
-#[bits = 4]
+#[derive(Debug, Clone)]
+#[repr(u8)]
 pub enum Old3dsSystemMode {
     /// Prod (64MB of usable application memory) 
     Prod64Mb = 0,
@@ -357,15 +359,31 @@ pub enum Old3dsSystemMode {
     Dev4_32Mb,
 }
 
+impl Old3dsSystemMode {
+    const fn into_bits(self) -> u8 {
+        self as _
+    }
+    const fn from_bits(value: u8) -> Self {
+        match value {
+            0 => Self::Prod64Mb,
+            1 => Self::Undefined,
+            2 => Self::Dev1_96Mb,
+            3 => Self::Dev2_80Mb,
+            4 => Self::Dev3_72Mb,
+            5 => Self::Dev4_32Mb,
+            _ => panic!("value out of range for Old3dsSystemMode"),
+        }
+    }
+}
+
 /// ARM11 Local system capabilities Flag1 data
 /// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#Flag1>
-#[bitfield]
-#[derive(Debug, Clone)]
+#[bitfield(u8)]
 pub struct Flag1 {
-    pub enable_l2_cache: bool,
-    pub cpuspeed_804mhz: bool,
-    #[skip]
-    __: B6,
+    enable_l2_cache: bool,
+    cpuspeed_804mhz: bool,
+    #[bits(6)]
+    __: u8,
 }
 
 /// ARM11 Local system capabilities New3DS system mode data
@@ -525,14 +543,14 @@ pub enum KernelCap {
 }
 
 /// ARM11 enabled syscall mask
-#[bitfield]
-#[derive(Clone)]
-#[repr(u32)]
+#[bitfield(u32, debug = false)]
 pub struct SyscallMask {
-    pub mask: B24,
-    pub idx: B3,
-    #[skip]
-    __: B5,
+    #[bits(24)]
+    mask: u32,
+    #[bits(3)]
+    idx: u8,
+    #[bits(5)]
+    __: u8,
 }
 
 impl SyscallMask {
@@ -591,32 +609,44 @@ impl fmt::Debug for SyscallMask {
 
 /// ARM11 Kernel Capabilities flag field data
 /// <https://www.3dbrew.org/wiki/NCCH/Extended_Header#ARM11_Kernel_Flags>
-#[bitfield]
-#[derive(Debug, Clone)]
-#[repr(u32)]
+#[bitfield(u32)]
 pub struct Arm11Flags {
-    pub allow_debug: bool,
-    pub force_debug: bool,
-    pub allow_non_alphanum: bool,
-    pub shared_page_writing: bool,
-    pub priviledge_priority: bool,
-    pub allow_main_args: bool,
-    pub shared_deice_memory: bool,
-    pub runnable_on_sleep: bool,
-    pub memory_type: Arm11MemoryType,
-    pub special_memory: bool,
-    pub access_core2: bool,
-    #[skip]
-    __: B18,
+    allow_debug: bool,
+    force_debug: bool,
+    allow_non_alphanum: bool,
+    shared_page_writing: bool,
+    priviledge_priority: bool,
+    allow_main_args: bool,
+    shared_deice_memory: bool,
+    runnable_on_sleep: bool,
+    #[bits(4)]
+    memory_type: Arm11MemoryType,
+    special_memory: bool,
+    access_core2: bool,
+    #[bits(18)]
+    __: u32,
 }
 
 /// ARM11 Memory Type
-#[derive(Debug, Clone, BitfieldSpecifier)]
-#[bits = 4]
+#[derive(Debug, Clone)]
+#[repr(u8)]
 pub enum Arm11MemoryType {
     Application = 1,
     System,
     Base,
+}
+impl Arm11MemoryType {
+    const fn into_bits(self) -> u32 {
+        self as _
+    }
+    const fn from_bits(value: u32) -> Self {
+        match value {
+            1 => Self::Application,
+            2 => Self::System,
+            3 => Self::Base,
+            _ => panic!("Invalid value for Arm11MemoryType"),
+        }
+    }
 }
 
 /// ARM9 Access Control data

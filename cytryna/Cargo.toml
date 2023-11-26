@@ -13,6 +13,7 @@ readme = "./README.md"
 
 [dependencies]
 aes = "0.8"
+bitfield-struct = "0.5.5"
 bitflags = "2.4"
 bmp = "0.5"
 cbc = { version = "0.1", features = ["alloc"] }
@@ -22,7 +23,6 @@ hex = "0.4"
 hex-literal = "0.4"
 image = { version = "0.24", default-features = false }
 memoffset = "0.9"
-modular-bitfield = "0.11"
 sha2 = "0.10"
 static_assertions = "1.1"
 thiserror = "1.0"

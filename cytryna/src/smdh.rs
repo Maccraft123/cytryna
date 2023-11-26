@@ -5,9 +5,9 @@ use crate::string::{SizedCString, SizedCStringError, SizedCStringUtf16};
 use crate::{CytrynaError, CytrynaResult, FromBytes};
 
 use bitflags::bitflags;
+use bitfield_struct::bitfield;
 use bmp::{px, Pixel};
 use derivative::Derivative;
-use modular_bitfield::prelude::*;
 use static_assertions::assert_eq_size;
 use thiserror::Error;
 
@@ -442,13 +442,14 @@ pub struct IconData<const SIZE: usize> {
 }
 
 /// SMDH Pixel data, it's actually BGR and not RGB
-#[bitfield]
-#[derive(Clone, Debug)]
-#[repr(u16)]
+#[bitfield(u16)]
 pub struct Rgb565Pixel {
-    b: B5,
-    g: B6,
-    r: B5,
+    #[bits(5)]
+    b: u8,
+    #[bits(6)]
+    g: u8,
+    #[bits(5)]
+    r: u8,
 }
 
 impl Rgb565Pixel {
@@ -654,18 +655,42 @@ impl<'a, const SIZE: usize> Iterator for PixelIterator<'a, SIZE> {
 #[cfg(test)]
 mod tests {
     use super::IconData;
+    use std::{fs, mem};
     use bmp::Pixel;
 
-    #[test]
-    fn bmp_to_smdh_to_bmp_24() {
-        let mut src = bmp::Image::new(24, 24);
-        for (x, y) in src.coordinates() {
+    fn random_bmp_image(size: u32) -> bmp::Image {
+        let mut img = bmp::Image::new(size, size);
+        for (x, y) in img.coordinates() {
             let r = (rand::random::<bool>() as u8) << 7;
             let g = (rand::random::<bool>() as u8) << 7;
             let b = (rand::random::<bool>() as u8) << 7;
-            src.set_pixel(x, y, bmp::px!(r, g, b));
+            img.set_pixel(x, y, bmp::px!(r, g, b));
         }
+        img
+    }
 
+    #[test]
+    fn bmp_smdh_with_known_good() {
+        let known_good_bmp = bmp::open("./testdata/random.bmp")
+            .expect("Failed to open bmp image");
+        let known_good_smdh = fs::read("./testdata/random.raw")
+            .expect("Failed to open smdh test file");
+        let test_smdh: IconData<0x900> = (&known_good_bmp).try_into().unwrap();
+
+        // make sure following transmutes are sound
+        assert!(known_good_smdh.len() >= 0x900/2);
+        assert!(test_smdh.raw_data().len() >= 0x900/2);
+
+        let good_smdh_u16: &[u16; 0x900] = unsafe { mem::transmute(known_good_smdh.as_ptr())};
+        let test_smdh_u16: &[u16; 0x900] = unsafe { mem::transmute(test_smdh.raw_data()) };
+
+        
+        assert_eq!(test_smdh_u16, good_smdh_u16);
+    }
+
+    #[test]
+    fn bmp_to_smdh_to_bmp_24() {
+        let src = random_bmp_image(24);
         let dst: IconData<0x240> = (&src).try_into().unwrap();
         let other_src: bmp::Image = dst.to_bmp();
 
@@ -674,14 +699,7 @@ mod tests {
 
     #[test]
     fn bmp_to_smdh_to_bmp_48() {
-        let mut src = bmp::Image::new(48, 48);
-        for (x, y) in src.coordinates() {
-            let r = (rand::random::<bool>() as u8) << 7;
-            let g = (rand::random::<bool>() as u8) << 7;
-            let b = (rand::random::<bool>() as u8) << 7;
-            src.set_pixel(x, y, bmp::px!(r, g, b));
-        }
-
+        let src = random_bmp_image(48);
         let dst: IconData<0x900> = (&src).try_into().unwrap();
         let other_src: bmp::Image = dst.to_bmp();
 
