@@ -4,7 +4,7 @@
 ## `cytryna` - The library itself
 ## `smdhtool` - A program heavily inspired by https://github.com/devkitPro/3dstools/blob/master/src/smdhtool.cpp, with suspiciously similar functionality
 
-## Read the docs for `cytryna` [here](https://maccraft123.github.io/cytryna/cytryna/index.html)!
+## Read the docs for `cytryna`: [main branch](https://maccraft123.github.io/cytryna/cytryna/index.html) [latest release](https://docs.rs/cytryna/latest/cytryna/)
 
 ## License: BSD-4-Clause
 ### Exemption is made for contributors and members of https://github.com/rust3ds project, to use cytryna library and readctr program under either the MIT license or BSD-4.
