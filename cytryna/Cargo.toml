@@ -2,6 +2,11 @@
 name = "cytryna"
 version = "0.1.0"
 edition = "2021"
+license-file = "LICENSE.txt"
+description = "A library for handling 3DS file types"
+homepage = "https://github.com/Maccraft123/cytryna"
+repository = "https://github.com/Maccraft123/cytryna"
+keywords = ["horizon", "3ds"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
