@@ -42,34 +42,44 @@ fn main() -> Result<()> {
         Commands::Create {
             short_desc, long_desc, publisher, icon, small_icon, output,
         } => {
-            let icon_big = bmp::open(&icon)?;
-
+            let icon_big = bmp::open(&icon)
+                .context("Failed to open big icon")?;
+            
             let smdh = Smdh::builder()
-                .with_short_desc(&short_desc)?
-                .with_long_desc(&long_desc)?
-                .with_publisher(&publisher)?
-                .with_icon((&icon_big).try_into()?)
-                .build()?;
+                .with_short_desc(&short_desc)
+                    .context("Failed to set short description")?
+                .with_long_desc(&long_desc)
+                    .context("Failed to set long description")?
+                .with_publisher(&publisher)
+                    .context("Filed to set publisher info")?
+                .with_icon((&icon_big).try_into().context("Failed to set big icon info")?)
+                .build()
+                    .context("Failed to build SMDH")?;
 
-            fs::write(output, smdh.as_bytes())?;
+            fs::write(output, smdh.as_bytes())
+                .context("Failed to write SMDH data")?;
         },
         Commands::Dump {
             input_path, big_icon_path, small_icon_path
         } => {
-            let vec = fs::read(input_path)?;
-            let smdh = Smdh::from_bytes(&vec)?;
+            let vec = fs::read(input_path)
+                .context("Failed to read SMDH file")?;
+            let smdh = Smdh::from_bytes(&vec)
+                .context("Failed to parse file as SMDH data")?;
             println!("{:#?}", smdh);
 
             if let Some(path) = big_icon_path {
                 smdh.big_icon()
                     .to_bmp()
-                    .save(path)?;
+                    .save(path)
+                    .context("Failed to write big icon BMP")?;
             }
 
             if let Some(path) = small_icon_path {
                 smdh.small_icon()
                     .to_bmp()
-                    .save(path)?;
+                    .save(path)
+                    .context("Failed to write small icon BMP")?;
             }
         }
     }
