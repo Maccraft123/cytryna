@@ -4,8 +4,8 @@ use std::slice;
 use crate::string::{SizedCString, SizedCStringError, SizedCStringUtf16};
 use crate::{CytrynaError, CytrynaResult, FromBytes};
 
-use bitflags::bitflags;
 use bitfield_struct::bitfield;
+use bitflags::bitflags;
 use bmp::{px, Pixel};
 use derivative::Derivative;
 use static_assertions::assert_eq_size;
@@ -479,10 +479,15 @@ impl Rgb565Pixel {
 
 /// SMDH icon tile order
 /// shamelessly stolen from smdhtool
-const TILE_ORDER: [u8; 64] = [
-    00, 01, 08, 09, 02, 03, 10, 11, 16, 17, 24, 25, 18, 19, 26, 27, 04, 05, 12, 13, 06, 07, 14, 15,
-    20, 21, 28, 29, 22, 23, 30, 31, 32, 33, 40, 41, 34, 35, 42, 43, 48, 49, 56, 57, 50, 51, 58, 59,
-    36, 37, 44, 45, 38, 39, 46, 47, 52, 53, 60, 61, 54, 55, 62, 63,
+const TILE_ORDER: [(u8, u8); 64] = [
+    (0, 0), (1, 0), (0, 1), (1, 1), (2, 0), (3, 0), (2, 1), (3, 1),
+    (0, 2), (1, 2), (0, 3), (1, 3), (2, 2), (3, 2), (2, 3), (3, 3),
+    (4, 0), (5, 0), (4, 1), (5, 1), (6, 0), (7, 0), (6, 1), (7, 1),
+    (4, 2), (5, 2), (4, 3), (5, 3), (6, 2), (7, 2), (6, 3), (7, 3),
+    (0, 4), (1, 4), (0, 5), (1, 5), (2, 4), (3, 4), (2, 5), (3, 5),
+    (0, 6), (1, 6), (0, 7), (1, 7), (2, 6), (3, 6), (2, 7), (3, 7),
+    (4, 4), (5, 4), (4, 5), (5, 5), (6, 4), (7, 4), (6, 5), (7, 5),
+    (4, 6), (5, 6), (4, 7), (5, 7), (6, 6), (7, 6), (6, 7), (7, 7),
 ];
 
 impl<const SIZE: usize> IconData<SIZE> {
@@ -582,7 +587,9 @@ impl<const SIZE: usize> TryFrom<&image::DynamicImage> for IconData<SIZE> {
         let src = src.to_rgb8();
         let mut this = Self { data };
         for (x, y, rgb) in this.pixel_iter_mut() {
-            *rgb = Rgb565Pixel::from_image_pixel_subpixel_u8(src.get_pixel(x as u32, y as u32).to_owned());
+            *rgb = Rgb565Pixel::from_image_pixel_subpixel_u8(
+                src.get_pixel(x as u32, y as u32).to_owned(),
+            );
         }
         Ok(this)
     }
@@ -602,8 +609,8 @@ impl<'a, const SIZE: usize> Iterator for PixelIteratorMut<'a, SIZE> {
     type Item = (u8, u8, &'a mut Rgb565Pixel);
 
     fn next(&mut self) -> Option<(u8, u8, &'a mut Rgb565Pixel)> {
-        let x = (TILE_ORDER[self.k as usize] & 0x7) + self.i;
-        let y = (TILE_ORDER[self.k as usize] >> 3) + self.j;
+        let x = TILE_ORDER[self.k as usize].0 + self.i;
+        let y = TILE_ORDER[self.k as usize].1 + self.j;
         let rgb = self.inner.next()?;
 
         self.k += 1;
@@ -634,8 +641,8 @@ impl<'a, const SIZE: usize> Iterator for PixelIterator<'a, SIZE> {
     type Item = (u8, u8, &'a Rgb565Pixel);
 
     fn next(&mut self) -> Option<(u8, u8, &'a Rgb565Pixel)> {
-        let x = (TILE_ORDER[self.k as usize] & 0x7) + self.i;
-        let y = (TILE_ORDER[self.k as usize] >> 3) + self.j;
+        let x = TILE_ORDER[self.k as usize].0 + self.i;
+        let y = TILE_ORDER[self.k as usize].1 + self.j;
         let rgb = self.inner.next()?;
 
         self.k += 1;
@@ -655,8 +662,8 @@ impl<'a, const SIZE: usize> Iterator for PixelIterator<'a, SIZE> {
 #[cfg(test)]
 mod tests {
     use super::IconData;
-    use std::{fs, mem};
     use bmp::Pixel;
+    use std::{fs, mem};
 
     fn random_bmp_image(size: u32) -> bmp::Image {
         let mut img = bmp::Image::new(size, size);
@@ -671,20 +678,18 @@ mod tests {
 
     #[test]
     fn bmp_smdh_with_known_good() {
-        let known_good_bmp = bmp::open("./testdata/random.bmp")
-            .expect("Failed to open bmp image");
-        let known_good_smdh = fs::read("./testdata/random.raw")
-            .expect("Failed to open smdh test file");
+        let known_good_bmp = bmp::open("./testdata/random.bmp").expect("Failed to open bmp image");
+        let known_good_smdh =
+            fs::read("./testdata/random.raw").expect("Failed to open smdh test file");
         let test_smdh: IconData<0x900> = (&known_good_bmp).try_into().unwrap();
 
         // make sure following transmutes are sound
-        assert!(known_good_smdh.len() >= 0x900/2);
-        assert!(test_smdh.raw_data().len() >= 0x900/2);
+        assert!(known_good_smdh.len() >= 0x900 / 2);
+        assert!(test_smdh.raw_data().len() >= 0x900 / 2);
 
-        let good_smdh_u16: &[u16; 0x900] = unsafe { mem::transmute(known_good_smdh.as_ptr())};
+        let good_smdh_u16: &[u16; 0x900] = unsafe { mem::transmute(known_good_smdh.as_ptr()) };
         let test_smdh_u16: &[u16; 0x900] = unsafe { mem::transmute(test_smdh.raw_data()) };
 
-        
         assert_eq!(test_smdh_u16, good_smdh_u16);
     }
 
