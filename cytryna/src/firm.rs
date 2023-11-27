@@ -54,7 +54,6 @@ impl FirmHeader {
         &self.firmware_section_headers
     }
     /// Returns an iterator over section headers, ignoring headers that aren't used(have size of 0)
-    #[must_use]
     pub fn section_iter(&self) -> impl Iterator<Item = &SectionHeader> {
         self.firmware_section_headers
             .iter()
@@ -237,7 +236,7 @@ impl FirmBuilder {
                 SectionHeader::empty(),
                 SectionHeader::empty(),
             ],
-            rsa2048_sig: sig.clone(),
+            rsa2048_sig: sig,
         };
 
         let mut buf = Vec::with_capacity(file_size);

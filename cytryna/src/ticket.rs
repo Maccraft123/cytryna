@@ -60,7 +60,6 @@ pub type Ticket<'a> = SignedData<'a, TicketInner>;
 
 impl Ticket<'_> {
     /// Returns the decrypted title key
-    #[must_use]
     pub fn title_key(&self) -> CytrynaResult<[u8; 0x10]> {
         let mut iv = [0u8; 0x10];
         iv[..0x8].copy_from_slice(&self.data().title_id.to_bytes());

@@ -63,7 +63,6 @@ assert_eq_size!([u8; 0x200], ExeFsHeader);
 
 impl ExeFsHeader {
     /// Returns an iterator over file headers that are used
-    #[must_use]
     pub fn file_headers_used(&self) -> impl Iterator<Item = &FileHeader> {
         self.file_headers.iter().filter(|hdr| !hdr.is_unused())
     }

@@ -29,6 +29,12 @@ pub struct KeyBag {
     keys: HashMap<KeyIndex, [u8; 0x10]>,
 }
 
+impl Default for KeyBag {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KeyBag {
     /// Makes an instance of KeyBag
     #[must_use]
@@ -41,7 +47,6 @@ impl KeyBag {
     /// keys returned by <https://github.com/citra-emu/citra/raw/master/dist/dumpkeys/DumpKeys.gm9>
     ///
     /// Note that this script won't dump all keys used in this library
-    #[must_use]
     pub fn from_string(string: &str) -> CytrynaResult<Self> {
         let mut this = Self::new();
         for line in string.lines() {
@@ -86,7 +91,6 @@ impl KeyBag {
 }
 
 /// Generates a normal-key from X and Y keys and a keygen constant
-#[must_use]
 pub fn keygen(x: [u8; 0x10], y: [u8; 0x10]) -> CytrynaResult<[u8; 0x10]> {
     let x = u128::from_be_bytes(x);
     let y = u128::from_be_bytes(y);
@@ -247,7 +251,6 @@ where
 }
 
 impl<T: ?Sized + FromBytes + fmt::Debug> SignedData<'_, T> {
-    #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> CytrynaResult<SignedData<T>> {
         unsafe {
             if bytes[0] != 0x0

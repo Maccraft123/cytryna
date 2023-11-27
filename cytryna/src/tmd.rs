@@ -61,7 +61,6 @@ pub type Tmd<'a> = SignedData<'a, TmdInner>;
 
 impl<'a> Tmd<'a> {
     /// Returns the Title ID of this TMD if it's a valid TitleId instance
-    #[must_use]
     pub fn title_id(&self) -> CytrynaResult<TitleId> {
         self.data().title_id.to_titleid()
     }

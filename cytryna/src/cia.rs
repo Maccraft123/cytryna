@@ -81,7 +81,6 @@ impl Cia {
         &self.data[..align(self.header.cert_size)]
     }
     /// Returns a reference to Ticket region
-    #[must_use]
     pub fn ticket_region(&self) -> CytrynaResult<Ticket> {
         let offset = align(self.header.cert_size);
         Ticket::from_bytes(&self.data[offset..][..align(self.header.ticket_size)])
@@ -94,7 +93,6 @@ impl Cia {
         Tmd::from_bytes(&self.data[offset..][..align(self.header.tmd_size)])
     }
     /// Returns an iterator over contents
-    #[must_use]
     pub fn content_region(&self) -> CytrynaResult<ContentRegionIter> {
         let offset = align(self.header.cert_size)
             + align(self.header.ticket_size)
@@ -204,13 +202,11 @@ impl MetaRegion {
         self.dependencies
     }
     /// Returns an iterator over TitleId structs, skipping dependency fields that aren't used
-    #[must_use]
     pub fn dependencies_iter(&self) -> impl Iterator<Item = TitleId> {
         let copy = self.dependencies;
         copy.into_iter().filter_map(|v| v.to_titleid().ok())
     }
     /// Returns SMDH data contained in this region
-    #[must_use]
     pub fn icon(&self) -> CytrynaResult<&Smdh> {
         Smdh::from_bytes(&self.icon)
     }

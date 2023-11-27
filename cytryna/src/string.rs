@@ -18,7 +18,6 @@ pub struct SizedCString<const SIZE: usize>([u8; SIZE]);
 impl<const SIZE: usize> SizedCString<SIZE> {
     /// Returns a reference to string stored within, or str::Utf8Error if it's not valid UTF-8 data
     /// <https://doc.rust-lang.org/std/str/fn.from_utf8.html>
-    #[must_use]
     pub fn as_str(&self) -> Result<&str, str::Utf8Error> {
         str::from_utf8(&self.0)
     }
@@ -56,7 +55,6 @@ pub struct SizedCStringUtf16<const SIZE: usize> {
 impl<const SIZE: usize> SizedCStringUtf16<SIZE> {
     /// Converts a SizedCStringUtf16 to a Rust String, returing an error on any invalid data
     /// <https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf16>
-    #[must_use]
     pub fn to_string(&self) -> Result<String, string::FromUtf16Error> {
         String::from_utf16(&self.data)
     }

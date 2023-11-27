@@ -111,7 +111,6 @@ impl Ncch {
     pub fn header(&self) -> &NcchHeader {
         &self.header
     }
-    #[must_use]
     pub fn from_slice(what: &[u8]) -> CytrynaResult<&Self> {
         let alignment = mem::align_of::<NcchHeader>();
         assert_eq!(0, what.as_ptr().align_offset(alignment));
@@ -132,7 +131,6 @@ impl Ncch {
             .contains(NcchFlagsOptions::NO_CRYPTO)
     }
     /// Returns a region as a byte slice
-    #[must_use]
     fn region(&self, offset: u32, size: u32) -> CytrynaResult<&[u8]> {
         if offset == 0 || size == 0 {
             return Err(CytrynaError::MissingRegion);
@@ -143,22 +141,18 @@ impl Ncch {
         Ok(&self.data[offset..][..size])
     }
     /// Returns a reference to "plain region"
-    #[must_use]
     pub fn plain_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.plain_offset, self.header.plain_size)
     }
     /// Returns icon/SMDH region data as a byte slice
-    #[must_use]
     pub fn logo_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.logo_offset, self.header.logo_size)
     }
     /// Returns ExeFS region data as a byte slice
-    #[must_use]
     pub fn exefs_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.exefs_offset, self.header.exefs_size)
     }
     /// Returns ExeFS region data
-    #[must_use]
     pub fn exefs(&self) -> CytrynaResult<exefs::ExeFs> {
         let data = self.exefs_region()?;
         let alignment = mem::align_of::<exefs::ExeFsHeader>();
@@ -177,7 +171,6 @@ impl Ncch {
         })
     }
     /// Returns a decrypted Exheader stored in OwnedOrBorrowed
-    #[must_use]
     pub fn exheader(&self) -> CytrynaResult<OwnedOrBorrowed<Exheader>> {
         if self.header.exheader_size == 0 {
             return Err(CytrynaError::MissingRegion);
@@ -217,7 +210,6 @@ impl Ncch {
         }
     }
     /// Returns the RomFS region data as a byte slice
-    #[must_use]
     pub fn romfs_region(&self) -> CytrynaResult<&[u8]> {
         self.region(self.header.romfs_offset, self.header.romfs_size)
     }
