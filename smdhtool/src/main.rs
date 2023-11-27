@@ -44,17 +44,28 @@ fn main() -> Result<()> {
         } => {
             let icon_big = bmp::open(&icon)
                 .context("Failed to open big icon")?;
+
+            let icon_small;
+            if let Some(path) = small_icon {
+                icon_small = Some(bmp::open(&path)?);
+            } else {
+                icon_small = None;
+            }
             
-            let smdh = Smdh::builder()
-                .with_short_desc(&short_desc)
+            let mut builder = Smdh::builder();
+            builder.with_short_desc(&short_desc)
                     .context("Failed to set short description")?
                 .with_long_desc(&long_desc)
                     .context("Failed to set long description")?
                 .with_publisher(&publisher)
                     .context("Filed to set publisher info")?
-                .with_icon((&icon_big).try_into().context("Failed to set big icon info")?)
-                .build()
-                    .context("Failed to build SMDH")?;
+                .with_icon((&icon_big).try_into().context("Failed to set big icon info")?);
+
+            if let Some(icon) = icon_small {
+                builder.with_small_icon((&icon).try_into().context("Failed to set small icon data")?);
+            }
+
+            let smdh = builder.build() .context("Failed to build SMDH")?;
 
             fs::write(output, smdh.as_bytes())
                 .context("Failed to write SMDH data")?;
