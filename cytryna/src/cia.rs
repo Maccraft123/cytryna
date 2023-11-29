@@ -1,6 +1,7 @@
 use std::mem;
 
 use crate::crypto::aes128_ctr::*;
+#[cfg(feature = "smdh")]
 use crate::smdh::Smdh;
 use crate::ticket::Ticket;
 use crate::titleid::{MaybeTitleId, TitleId};
@@ -191,7 +192,7 @@ pub struct MetaRegion {
     _reserved0: [u8; 0x180],
     core_version: u32,
     _reserved1: [u8; 0xfc],
-    icon: [u8; mem::size_of::<Smdh>()],
+    icon: [u8; 0x36c0], // mem::size_of::<Smdh>(),
 }
 assert_eq_size!([u8; 0x3ac0], MetaRegion);
 
@@ -207,6 +208,7 @@ impl MetaRegion {
         copy.into_iter().filter_map(|v| v.to_titleid().ok())
     }
     /// Returns SMDH data contained in this region
+    #[cfg(feature = "smdh")]
     pub fn icon(&self) -> CytrynaResult<&Smdh> {
         Smdh::from_bytes(&self.icon)
     }

@@ -9,7 +9,6 @@ use std::sync::OnceLock;
 use crate::string::SizedCString;
 use crate::{CytrynaError, CytrynaResult, FromBytes};
 
-use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 pub mod aes128_ctr {
@@ -188,13 +187,6 @@ impl fmt::Display for KeyType {
         };
         f.write_str(string)
     }
-}
-
-/// Computes sha data of a byte slice
-pub fn sha256(data: &[u8]) -> [u8; 0x20] {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    hasher.finalize().into()
 }
 
 /// Contains signed data in a way that is generic over signed data type and signature type

@@ -11,19 +11,29 @@ readme = "./README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = [ "cia", "firm", "ncch", "smdh" ]
+cia = ["crypto"]
+firm = ["hash"]
+ncch = ["crypto"]
+smdh = ["dep:bmp", "dep:image"]
+
+hash = ["dep:sha2"]
+crypto = ["dep:aes", "dep:cbc", "dep:ctr"]
+
 [dependencies]
-aes = "0.8"
+aes = { version = "0.8", optional = true }
 bitfield-struct = "0.5.5"
 bitflags = "2.4"
-bmp = "0.5"
-cbc = { version = "0.1", features = ["alloc"] }
-ctr = { version = "0.9", features = ["std"] }
+bmp = { version = "0.5", optional = true }
+cbc = { version = "0.1", features = ["alloc"], optional = true }
+ctr = { version = "0.9", features = ["std"], optional = true }
 derivative = "2.2"
 hex = "0.4"
 hex-literal = "0.4"
-image = { version = "0.24", default-features = false }
+image = { version = "0.24", default-features = false, optional = true }
 memoffset = "0.9"
-sha2 = "0.10"
+sha2 = { version = "0.10", optional = true }
 static_assertions = "1.1"
 thiserror = "1.0"
 

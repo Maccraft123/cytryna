@@ -1,14 +1,23 @@
 #![allow(clippy::transmute_ptr_to_ref)]
 #![allow(clippy::identity_op)]
 
+#[cfg(feature = "cia")]
 pub mod cia;
+#[cfg(feature = "crypto")]
 pub mod crypto;
+#[cfg(feature = "firm")]
 pub mod firm;
+#[cfg(feature = "hash")]
+pub mod hash;
+#[cfg(feature = "ncch")]
 pub mod ncch;
+#[cfg(feature = "smdh")]
 pub mod smdh;
 pub mod string;
+#[cfg(feature = "cia")]
 pub mod ticket;
 pub mod titleid;
+#[cfg(feature = "cia")]
 pub mod tmd;
 
 use std::ops::Deref;
@@ -16,6 +25,7 @@ use std::ops::Deref;
 use thiserror::Error;
 
 /// Low-effort catch-all error type for cytryna library
+#[non_exhaustive]
 #[derive(Error, Debug)]
 pub enum CytrynaError {
     #[error("Invalid magic bytes")]
@@ -32,8 +42,10 @@ pub enum CytrynaError {
     InvalidRegionPosition,
     #[error("Unsupported version of header")]
     UnsupportedHeaderVersion,
+    #[cfg(feature = "crypto")]
     #[error("Missing {0} key")]
     MissingKey(crypto::KeyIndex),
+    #[cfg(feature = "crypto")]
     #[error("Uninitialized keybag")]
     NoKeyBag,
     #[error("Value out of range for {0} enum")]
@@ -46,8 +58,10 @@ pub enum CytrynaError {
         actual: usize,
         expected: usize,
     },
+    #[cfg(feature = "crypto")]
     #[error("Failed to parse keyindex")]
     KeyIndexFail(#[from] crypto::KeyIndexParseError),
+    #[cfg(feature = "crypto")]
     #[error("Failed to stream-encrypt/decrypt data")]
     StreamCrypt(#[from] ctr::cipher::StreamCipherError),
     #[error("Failed to decode hex string")]
@@ -90,10 +104,15 @@ pub trait FromBytes {
 
 pub mod prelude {
     pub use crate::FromBytes;
+    #[cfg(feature = "cia")]
     pub use crate::cia::Cia;
+    #[cfg(feature = "firm")]
     pub use crate::firm::Firm;
+    #[cfg(feature = "ncch")]
     pub use crate::ncch::Ncch;
+    #[cfg(feature = "smdh")]
     pub use crate::smdh::Smdh;
+    #[cfg(feature = "cia")]
     pub use crate::ticket::Ticket;
 }
 

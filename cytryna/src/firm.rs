@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::crypto::sha256;
+use crate::hash::sha256;
 use crate::string::SizedCString;
 use crate::FromBytes;
 use crate::{align_up, CytrynaError, CytrynaResult};
