@@ -1,4 +1,5 @@
-use std::{borrow::Cow, fmt, str, string};
+use alloc::{borrow::Cow, string};
+use core::{fmt, str};
 
 use thiserror::Error;
 

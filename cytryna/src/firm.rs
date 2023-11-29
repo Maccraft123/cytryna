@@ -1,11 +1,10 @@
-use std::mem;
+use core::mem;
 
 use crate::hash::sha256;
 use crate::string::SizedCString;
 use crate::FromBytes;
 use crate::{align_up, CytrynaError, CytrynaResult};
 
-use derivative::Derivative;
 use hex_literal::hex;
 use static_assertions::assert_eq_size;
 use thiserror::Error;
@@ -17,15 +16,13 @@ static RETAIL_SPI_FIRM: [u8; 0x100] = RETAIL_NTR_FIRM;
 
 /// FIRM header data
 /// <https://www.3dbrew.org/wiki/FIRM#FIRM_Header>
-#[derive(Derivative, Clone)]
-#[derivative(Debug)]
+#[derive(Clone, Debug)]
 #[repr(C)]
 pub struct FirmHeader {
     magic: SizedCString<4>,
     boot_priority: u32,
     arm11_entrypoint: u32,
     arm9_entrypoint: u32,
-    #[derivative(Debug = "ignore")]
     _reserved: [u8; 0x30],
     firmware_section_headers: [SectionHeader; 4],
     rsa2048_sig: [u8; 0x100],
@@ -68,8 +65,7 @@ impl FirmHeader {
 
 /// FIRM Section Header
 /// <https://www.3dbrew.org/wiki/FIRM#Firmware_Section_Headers>
-#[derive(Derivative, Clone)]
-#[derivative(Debug)]
+#[derive(Clone, Debug)]
 #[repr(C)]
 pub struct SectionHeader {
     offset: u32,

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
-use std::fmt;
-use std::marker::PhantomData;
-use std::mem;
-use std::num;
-use std::str::FromStr;
+use core::fmt;
+use core::marker::PhantomData;
+use core::mem;
+use core::num;
+use core::str::FromStr;
 use std::sync::OnceLock;
 
 use crate::string::SizedCString;

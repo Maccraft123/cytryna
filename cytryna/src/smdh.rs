@@ -1,5 +1,6 @@
-use std::mem;
-use std::slice;
+use core::fmt;
+use core::mem;
+use core::slice;
 
 use crate::string::{SizedCString, SizedCStringError, SizedCStringUtf16};
 use crate::{CytrynaError, CytrynaResult, FromBytes};
@@ -7,7 +8,6 @@ use crate::{CytrynaError, CytrynaResult, FromBytes};
 use bitfield_struct::bitfield;
 use bitflags::bitflags;
 use bmp::{px, Pixel};
-use derivative::Derivative;
 use static_assertions::assert_eq_size;
 use thiserror::Error;
 
@@ -172,13 +172,11 @@ impl SmdhBuilder {
 
 /// SMDH Header data
 /// <https://www.3dbrew.org/wiki/SMDH>
-#[derive(Derivative, Clone)]
-#[derivative(Debug)]
+#[derive(Clone, Debug)]
 #[repr(C)]
 pub struct Smdh {
     magic: SizedCString<4>,
     version: u16,
-    #[derivative(Debug = "ignore")]
     _reserved0: u16,
     titles: [SmdhTitle; 0x10],
     age_ratings: [AgeRating; 0x10],
@@ -186,13 +184,10 @@ pub struct Smdh {
     matchmaker_id: MatchmakerId,
     flags: SmdhFlags,
     eula_version: EulaVersion,
-    #[derivative(Debug = "ignore")]
     _reserved1: u16,
     optimal_animation_default_frame: f32,
     cec_id: u32,
-    #[derivative(Debug = "ignore")]
     _reserved2: u64,
-    #[derivative(Debug = "ignore")]
     icon: SmdhIcon,
 }
 assert_eq_size!([u8; 0x36c0], Smdh);
@@ -426,7 +421,7 @@ impl SmdhTitle {
 
 /// SMDH Icon data wrapper
 /// <https://www.3dbrew.org/wiki/SMDH#Icon_graphics>
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[repr(C)]
 pub struct SmdhIcon {
     small: IconData<0x240>,
@@ -439,6 +434,13 @@ assert_eq_size!([u8; 0x1680], SmdhIcon);
 #[repr(C)]
 pub struct IconData<const SIZE: usize> {
     data: [Rgb565Pixel; SIZE],
+}
+
+impl<const SIZE: usize> fmt::Debug for IconData<SIZE> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct(&format!("IconData<0x{:x?}>", SIZE))
+            .finish()
+    }
 }
 
 /// SMDH Pixel data, it's actually BGR and not RGB

@@ -1,6 +1,8 @@
 #![allow(clippy::transmute_ptr_to_ref)]
 #![allow(clippy::identity_op)]
 
+extern crate alloc;
+
 #[cfg(feature = "cia")]
 pub mod cia;
 #[cfg(feature = "crypto")]
@@ -20,7 +22,7 @@ pub mod titleid;
 #[cfg(feature = "cia")]
 pub mod tmd;
 
-use std::ops::Deref;
+use core::ops::Deref;
 
 use thiserror::Error;
 
@@ -70,7 +72,7 @@ pub enum CytrynaError {
     BadAlign,
 }
 
-pub type CytrynaResult<T> = std::result::Result<T, CytrynaError>;
+pub type CytrynaResult<T> = core::result::Result<T, CytrynaError>;
 
 /// Simple trait to implement safe conversions from bytes
 pub trait FromBytes {

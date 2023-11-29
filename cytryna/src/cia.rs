@@ -1,4 +1,4 @@
-use std::mem;
+use core::mem;
 
 use crate::crypto::aes128_ctr::*;
 #[cfg(feature = "smdh")]
