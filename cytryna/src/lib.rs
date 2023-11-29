@@ -24,51 +24,55 @@ pub mod tmd;
 
 use core::ops::Deref;
 
-use thiserror::Error;
+use derive_more::{Display, Error, From};
 
 /// Low-effort catch-all error type for cytryna library
 #[non_exhaustive]
-#[derive(Error, Debug)]
+#[derive(Display, Debug, Error, From)]
 pub enum CytrynaError {
-    #[error("Invalid magic bytes")]
+    #[display(fmt = "Invalid magic bytes")]
     InvalidMagic,
-    #[error("Missing region")]
+    #[display(fmt = "Missing region")]
     MissingRegion,
-    #[error("Invalid size of header")]
+    #[display(fmt = "Invalid size of header")]
     InvalidHeaderSize,
-    #[error("Invalid hash")]
+    #[display(fmt = "Invalid hash")]
     InvalidHash,
-    #[error("Signature corrupted/forged")]
+    #[display(fmt = "Signature corrupted/forged")]
     SignatureCorrupted,
-    #[error("Invalid region position")]
+    #[display(fmt = "Invalid region position")]
     InvalidRegionPosition,
-    #[error("Unsupported version of header")]
+    #[display(fmt = "Unsupported version of header")]
     UnsupportedHeaderVersion,
     #[cfg(feature = "crypto")]
-    #[error("Missing {0} key")]
+    #[error(ignore)]
+    #[display(fmt = "Missing {_0} key")]
     MissingKey(crypto::KeyIndex),
     #[cfg(feature = "crypto")]
-    #[error("Uninitialized keybag")]
+    #[display(fmt = "Uninitialized keybag")]
     NoKeyBag,
-    #[error("Value out of range for {0} enum")]
+    #[error(ignore)]
+    #[from(ignore)]
+    #[display(fmt = "Value out of range for {_0} enum")]
     EnumValueOutOfRange(&'static str),
-    #[error("Byte slice passed is too small")]
+    #[display(fmt = "Byte slice passed is too small")]
     SliceTooSmall,
-    #[error("Invalid length of {what}: {actual} (expected {expected})")]
+    #[from(ignore)]
+    #[display(fmt = "Invalid length of {what}: {actual} (expected {expected})")]
     InvalidLength{
         what: &'static str,
         actual: usize,
         expected: usize,
     },
     #[cfg(feature = "crypto")]
-    #[error("Failed to parse keyindex")]
-    KeyIndexFail(#[from] crypto::KeyIndexParseError),
+    #[display(fmt = "Failed to parse keyindex")]
+    KeyIndexFail(crypto::KeyIndexParseError),
     #[cfg(feature = "crypto")]
-    #[error("Failed to stream-encrypt/decrypt data")]
-    StreamCrypt(#[from] ctr::cipher::StreamCipherError),
-    #[error("Failed to decode hex string")]
-    HexError(#[from] hex::FromHexError),
-    #[error("Incorrect alignment")]
+    #[display(fmt = "Failed to stream-encrypt/decrypt data")]
+    StreamCrypt(ctr::cipher::StreamCipherError),
+    #[display(fmt = "Failed to decode hex string")]
+    HexError(hex::FromHexError),
+    #[display(fmt = "Incorrect alignment")]
     BadAlign,
 }
 

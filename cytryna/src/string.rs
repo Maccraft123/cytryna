@@ -1,12 +1,12 @@
 use alloc::{borrow::Cow, string};
 use core::{fmt, str};
 
-use thiserror::Error;
+use derive_more::{Display, Error};
 
 /// An error for SizedCString construction
-#[derive(Error, Debug)]
+#[derive(Debug, Display, Error)]
 pub enum SizedCStringError {
-    #[error("Input string too big to fit into storage")]
+    #[display(fmt = "Input string too big to fit into storage")]
     TooBig,
 }
 

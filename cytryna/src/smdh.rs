@@ -8,25 +8,25 @@ use crate::{CytrynaError, CytrynaResult, FromBytes};
 use bitfield_struct::bitfield;
 use bitflags::bitflags;
 use bmp::{px, Pixel};
+use derive_more::{Display, Error, From};
 use static_assertions::assert_eq_size;
-use thiserror::Error;
 
 /// SMDH error type
-#[derive(Error, Debug)]
+#[derive(Debug, Display, Error, From)]
 pub enum SmdhError {
-    #[error("Missing short description")]
+    #[display(fmt = "Missing short description")]
     MissingShortDesc,
-    #[error("Missing long description")]
+    #[display(fmt = "Missing long description")]
     MissingLongDesc,
-    #[error("Missing publisher name")]
+    #[display(fmt = "Missing publisher name")]
     MissingPublisher,
-    #[error("Missing icon data")]
+    #[display(fmt = "Missing icon data")]
     MissingIcon,
-    #[error("SizedCString error: {0}")]
-    StringErr(#[from] SizedCStringError),
-    #[error("Invalid image size, got: {got}, expected: {expected}")]
+    #[display(fmt = "SizedCString error: {_0}")]
+    StringErr(SizedCStringError),
+    #[display(fmt = "Invalid image size, got: {got}, expected: {expected}")]
     InvalidImageSize { got: u32, expected: u32 },
-    #[error("Only square images can be SMDH icons")]
+    #[display(fmt = "Only square images can be SMDH icons")]
     OnlySquaresAllowed,
 }
 

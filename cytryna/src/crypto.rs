@@ -9,7 +9,7 @@ use std::sync::OnceLock;
 use crate::string::SizedCString;
 use crate::{CytrynaError, CytrynaResult, FromBytes};
 
-use thiserror::Error;
+use derive_more::{Display, Error, From};
 
 pub mod aes128_ctr {
     pub use aes::cipher::block_padding::NoPadding;
@@ -126,13 +126,17 @@ impl fmt::Display for KeyIndex {
 }
 
 /// An error type for KeyIndex parsing
-#[derive(Error, Debug)]
+#[derive(Debug, Display, Error, From)]
 pub enum KeyIndexParseError {
-    #[error("Failed to parse a hex number")]
-    NumberParseError(#[from] num::ParseIntError),
-    #[error("Invalid key type \"{0}\"")]
+    #[display(fmt = "Failed to parse a hex number")]
+    NumberParseError(num::ParseIntError),
+    #[error(ignore)]
+    #[from(ignore)]
+    #[display(fmt = "Invalid key type \"{_0}\"")]
     InvalidKeyType(String),
-    #[error("Invalid X/Y/Z key type \"{0}\"")]
+    #[error(ignore)]
+    #[from(ignore)]
+    #[display(fmt = "Invalid X/Y/N key type \"{_0}\"")]
     InvalidKeyXYNType(String),
 }
 
