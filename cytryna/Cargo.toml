@@ -12,11 +12,12 @@ readme = "./README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = [ "cia", "firm", "ncch", "smdh" ]
+default = [ "cia", "firm", "ncch", "smdh", "3dsx" ]
 cia = ["crypto", "derivative"]
 firm = ["hash"]
 ncch = ["crypto", "derivative"]
 smdh = ["dep:bmp", "dep:image"]
+3dsx = []
 
 hash = ["dep:sha2"]
 crypto = ["dep:aes", "dep:cbc", "dep:ctr"]

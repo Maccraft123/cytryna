@@ -3,6 +3,8 @@
 
 extern crate alloc;
 
+#[cfg(feature = "3dsx")]
+pub mod hb3dsx;
 #[cfg(feature = "cia")]
 pub mod cia;
 #[cfg(feature = "crypto")]
@@ -110,6 +112,8 @@ pub trait FromBytes {
 
 pub mod prelude {
     pub use crate::FromBytes;
+    #[cfg(feature = "3dsx")]
+    pub use crate::hb3dsx::Hb3dsx;
     #[cfg(feature = "cia")]
     pub use crate::cia::Cia;
     #[cfg(feature = "firm")]
