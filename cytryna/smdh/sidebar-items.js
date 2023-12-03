@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AgeRatingRegion","Language","SmdhError"],"struct":["AgeRating","EulaVersion","IconData","MatchmakerId","PixelIterator","PixelIteratorMut","RegionLockout","Rgb565Pixel","Smdh","SmdhBuilder","SmdhFlags","SmdhIcon","SmdhTitle"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SizedCStringError"],"struct":["SizedCString","SizedCStringUtf16"]};

@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["cytryna","mk3dsx","readctr","smdhtool"];

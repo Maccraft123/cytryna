@@ -1,0 +1,119 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Decrypt-only functionality for block ciphers and modes with mutable access to `self`."><title>BlockDecryptMut in cytryna::crypto::aes128_ctr - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cytryna" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0 (79e9716c9 2023-11-13)" data-channel="1.74.0" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../../cytryna/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a></nav><nav class="sidebar"><a class="logo-container" href="../../../cytryna/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">BlockDecryptMut</a></h2><div class="sidebar-elems"><section><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.decrypt_with_backend_mut">decrypt_with_backend_mut</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.decrypt_block_b2b_mut">decrypt_block_b2b_mut</a></li><li><a href="#method.decrypt_block_inout_mut">decrypt_block_inout_mut</a></li><li><a href="#method.decrypt_block_mut">decrypt_block_mut</a></li><li><a href="#method.decrypt_blocks_b2b_mut">decrypt_blocks_b2b_mut</a></li><li><a href="#method.decrypt_blocks_inout_mut">decrypt_blocks_inout_mut</a></li><li><a href="#method.decrypt_blocks_mut">decrypt_blocks_mut</a></li><li><a href="#method.decrypt_padded_b2b_mut">decrypt_padded_b2b_mut</a></li><li><a href="#method.decrypt_padded_inout_mut">decrypt_padded_inout_mut</a></li><li><a href="#method.decrypt_padded_mut">decrypt_padded_mut</a></li><li><a href="#method.decrypt_padded_vec_mut">decrypt_padded_vec_mut</a></li></ul><h3><a href="#foreign-impls">Implementations on Foreign Types</a></h3><ul class="block"><li><a href="#impl-BlockDecryptMut-for-Decryptor%3CC%3E">Decryptor&lt;C&gt;</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><h2><a href="index.html">In cytryna::crypto::aes128_ctr</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Trait <a href="../../index.html">cytryna</a>::<wbr><a href="../index.html">crypto</a>::<wbr><a href="index.html">aes128_ctr</a>::<wbr><a class="trait" href="#">BlockDecryptMut</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub trait BlockDecryptMut: BlockSizeUser + <a class="trait" href="https://doc.rust-lang.org/1.74.0/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a> {
+    // Required method
+    fn <a href="#tymethod.decrypt_with_backend_mut" class="fn">decrypt_with_backend_mut</a>(
+        &amp;mut self,
+        f: impl BlockClosure&lt;BlockSize = Self::BlockSize&gt;
+    );
+
+    // Provided methods
+    fn <a href="#method.decrypt_block_inout_mut" class="fn">decrypt_block_inout_mut</a>(
+        &amp;mut self,
+        block: <a class="struct" href="https://docs.rs/inout/0.1.3/inout/inout/struct.InOut.html" title="struct inout::inout::InOut">InOut</a>&lt;'_, '_, GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;&gt;
+    ) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.decrypt_blocks_inout_mut" class="fn">decrypt_blocks_inout_mut</a>(
+        &amp;mut self,
+        blocks: <a class="struct" href="https://docs.rs/inout/0.1.3/inout/inout_buf/struct.InOutBuf.html" title="struct inout::inout_buf::InOutBuf">InOutBuf</a>&lt;'_, '_, GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;&gt;
+    ) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.decrypt_block_mut" class="fn">decrypt_block_mut</a>(
+        &amp;mut self,
+        block: &amp;mut GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;
+    ) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.decrypt_block_b2b_mut" class="fn">decrypt_block_b2b_mut</a>(
+        &amp;mut self,
+        in_block: &amp;GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;,
+        out_block: &amp;mut GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;
+    ) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.decrypt_blocks_mut" class="fn">decrypt_blocks_mut</a>(
+        &amp;mut self,
+        blocks: &amp;mut [GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;]
+    ) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.decrypt_blocks_b2b_mut" class="fn">decrypt_blocks_b2b_mut</a>(
+        &amp;mut self,
+        in_blocks: &amp;[GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;],
+        out_blocks: &amp;mut [GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;]
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.74.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.unit.html">()</a>, <a class="struct" href="https://docs.rs/inout/0.1.3/inout/errors/struct.NotEqualError.html" title="struct inout::errors::NotEqualError">NotEqualError</a>&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.decrypt_padded_inout_mut" class="fn">decrypt_padded_inout_mut</a>&lt;P, 'inp, 'out&gt;(
+        self,
+        data: <a class="struct" href="https://docs.rs/inout/0.1.3/inout/inout_buf/struct.InOutBuf.html" title="struct inout::inout_buf::InOutBuf">InOutBuf</a>&lt;'inp, 'out, <a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>&gt;
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.74.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;&amp;'out [<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>], UnpadError&gt;
+       <span class="where">where P: Padding&lt;Self::BlockSize&gt;</span> { ... }
+<span class="item-spacer"></span>    fn <a href="#method.decrypt_padded_mut" class="fn">decrypt_padded_mut</a>&lt;P&gt;(self, buf: &amp;mut [<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>]) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.74.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;&amp;[<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>], UnpadError&gt;
+       <span class="where">where P: Padding&lt;Self::BlockSize&gt;</span> { ... }
+<span class="item-spacer"></span>    fn <a href="#method.decrypt_padded_b2b_mut" class="fn">decrypt_padded_b2b_mut</a>&lt;P, 'a&gt;(
+        self,
+        in_buf: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>],
+        out_buf: &amp;'a mut [<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>]
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.74.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;&amp;'a [<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>], UnpadError&gt;
+       <span class="where">where P: Padding&lt;Self::BlockSize&gt;</span> { ... }
+<span class="item-spacer"></span>    fn <a href="#method.decrypt_padded_vec_mut" class="fn">decrypt_padded_vec_mut</a>&lt;P&gt;(
+        self,
+        buf: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>]
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.74.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.74.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, <a class="struct" href="https://doc.rust-lang.org/1.74.0/alloc/alloc/struct.Global.html" title="struct alloc::alloc::Global">Global</a>&gt;, UnpadError&gt;
+       <span class="where">where P: Padding&lt;Self::BlockSize&gt;</span> { ... }
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Decrypt-only functionality for block ciphers and modes with mutable access to <code>self</code>.</p>
+<p>The main use case for this trait is blocks modes, but it also can be used
+for hardware cryptographic engines which require <code>&amp;mut self</code> access to an
+underlying hardware peripheral.</p>
+</div></details><h2 id="required-methods" class="small-section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.decrypt_with_backend_mut" class="method"><h4 class="code-header">fn <a href="#tymethod.decrypt_with_backend_mut" class="fn">decrypt_with_backend_mut</a>(
+    &amp;mut self,
+    f: impl BlockClosure&lt;BlockSize = Self::BlockSize&gt;
+)</h4></section></summary><div class="docblock"><p>Decrypt data using backend provided to the rank-2 closure.</p>
+</div></details></div><h2 id="provided-methods" class="small-section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.decrypt_block_inout_mut" class="method"><h4 class="code-header">fn <a href="#method.decrypt_block_inout_mut" class="fn">decrypt_block_inout_mut</a>(
+    &amp;mut self,
+    block: <a class="struct" href="https://docs.rs/inout/0.1.3/inout/inout/struct.InOut.html" title="struct inout::inout::InOut">InOut</a>&lt;'_, '_, GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;&gt;
+)</h4></section></summary><div class="docblock"><p>Decrypt single <code>inout</code> block.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.decrypt_blocks_inout_mut" class="method"><h4 class="code-header">fn <a href="#method.decrypt_blocks_inout_mut" class="fn">decrypt_blocks_inout_mut</a>(
+    &amp;mut self,
+    blocks: <a class="struct" href="https://docs.rs/inout/0.1.3/inout/inout_buf/struct.InOutBuf.html" title="struct inout::inout_buf::InOutBuf">InOutBuf</a>&lt;'_, '_, GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;&gt;
+)</h4></section></summary><div class="docblock"><p>Decrypt <code>inout</code> blocks.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.decrypt_block_mut" class="method"><h4 class="code-header">fn <a href="#method.decrypt_block_mut" class="fn">decrypt_block_mut</a>(&amp;mut self, block: &amp;mut GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;)</h4></section></summary><div class="docblock"><p>Decrypt single block in-place.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.decrypt_block_b2b_mut" class="method"><h4 class="code-header">fn <a href="#method.decrypt_block_b2b_mut" class="fn">decrypt_block_b2b_mut</a>(
+    &amp;mut self,
+    in_block: &amp;GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;,
+    out_block: &amp;mut GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;
+)</h4></section></summary><div class="docblock"><p>Decrypt <code>in_block</code> and write result to <code>out_block</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.decrypt_blocks_mut" class="method"><h4 class="code-header">fn <a href="#method.decrypt_blocks_mut" class="fn">decrypt_blocks_mut</a>(
+    &amp;mut self,
+    blocks: &amp;mut [GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;]
+)</h4></section></summary><div class="docblock"><p>Decrypt blocks in-place.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.decrypt_blocks_b2b_mut" class="method"><h4 class="code-header">fn <a href="#method.decrypt_blocks_b2b_mut" class="fn">decrypt_blocks_b2b_mut</a>(
+    &amp;mut self,
+    in_blocks: &amp;[GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;],
+    out_blocks: &amp;mut [GenericArray&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, Self::BlockSize&gt;]
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.74.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.unit.html">()</a>, <a class="struct" href="https://docs.rs/inout/0.1.3/inout/errors/struct.NotEqualError.html" title="struct inout::errors::NotEqualError">NotEqualError</a>&gt;</h4></section></summary><div class="docblock"><p>Decrypt blocks buffer-to-buffer.</p>
+<p>Returns <a href="https://docs.rs/inout/0.1.3/inout/errors/struct.NotEqualError.html" title="struct inout::errors::NotEqualError"><code>NotEqualError</code></a> if provided <code>in_blocks</code> and <code>out_blocks</code>
+have different lengths.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.decrypt_padded_inout_mut" class="method"><h4 class="code-header">fn <a href="#method.decrypt_padded_inout_mut" class="fn">decrypt_padded_inout_mut</a>&lt;P, 'inp, 'out&gt;(
+    self,
+    data: <a class="struct" href="https://docs.rs/inout/0.1.3/inout/inout_buf/struct.InOutBuf.html" title="struct inout::inout_buf::InOutBuf">InOutBuf</a>&lt;'inp, 'out, <a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>&gt;
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.74.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;&amp;'out [<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>], UnpadError&gt;<span class="where fmt-newline">where
+    P: Padding&lt;Self::BlockSize&gt;,</span></h4></section></summary><div class="docblock"><p>Decrypt input and unpad it. Returns resulting ciphertext slice.</p>
+<p>Returns [<code>UnpadError</code>] if padding is malformed or if input length is
+not multiple of <code>Self::BlockSize</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.decrypt_padded_mut" class="method"><h4 class="code-header">fn <a href="#method.decrypt_padded_mut" class="fn">decrypt_padded_mut</a>&lt;P&gt;(self, buf: &amp;mut [<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>]) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.74.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;&amp;[<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>], UnpadError&gt;<span class="where fmt-newline">where
+    P: Padding&lt;Self::BlockSize&gt;,</span></h4></section></summary><div class="docblock"><p>Decrypt input and unpad it in-place. Returns resulting ciphertext slice.</p>
+<p>Returns [<code>UnpadError</code>] if padding is malformed or if input length is
+not multiple of <code>Self::BlockSize</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.decrypt_padded_b2b_mut" class="method"><h4 class="code-header">fn <a href="#method.decrypt_padded_b2b_mut" class="fn">decrypt_padded_b2b_mut</a>&lt;P, 'a&gt;(
+    self,
+    in_buf: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>],
+    out_buf: &amp;'a mut [<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>]
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.74.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;&amp;'a [<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>], UnpadError&gt;<span class="where fmt-newline">where
+    P: Padding&lt;Self::BlockSize&gt;,</span></h4></section></summary><div class="docblock"><p>Decrypt input and unpad it buffer-to-buffer. Returns resulting
+ciphertext slice.</p>
+<p>Returns [<code>UnpadError</code>] if padding is malformed or if input length is
+not multiple of <code>Self::BlockSize</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.decrypt_padded_vec_mut" class="method"><h4 class="code-header">fn <a href="#method.decrypt_padded_vec_mut" class="fn">decrypt_padded_vec_mut</a>&lt;P&gt;(
+    self,
+    buf: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>]
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.74.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.74.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.74.0/std/primitive.u8.html">u8</a>, <a class="struct" href="https://doc.rust-lang.org/1.74.0/alloc/alloc/struct.Global.html" title="struct alloc::alloc::Global">Global</a>&gt;, UnpadError&gt;<span class="where fmt-newline">where
+    P: Padding&lt;Self::BlockSize&gt;,</span></h4></section></summary><div class="docblock"><p>Decrypt input and unpad it in a newly allocated Vec. Returns resulting
+ciphertext Vec.</p>
+<p>Returns [<code>UnpadError</code>] if padding is malformed or if input length is
+not multiple of <code>Self::BlockSize</code>.</p>
+</div></details></div><h2 id="foreign-impls" class="small-section-header">Implementations on Foreign Types<a href="#foreign-impls" class="anchor">§</a></h2><details class="toggle implementors-toggle"><summary><section id="impl-BlockDecryptMut-for-Decryptor%3CC%3E" class="impl"><a class="src rightside" href="https://docs.rs/cbc/0.1.2/src/cbc/decrypt.rs.html#31">source</a><a href="#impl-BlockDecryptMut-for-Decryptor%3CC%3E" class="anchor">§</a><h3 class="code-header">impl&lt;C&gt; <a class="trait" href="trait.BlockDecryptMut.html" title="trait cytryna::crypto::aes128_ctr::BlockDecryptMut">BlockDecryptMut</a> for <a class="struct" href="https://docs.rs/cbc/0.1.2/cbc/decrypt/struct.Decryptor.html" title="struct cbc::decrypt::Decryptor">Decryptor</a>&lt;C&gt;<span class="where fmt-newline">where
+    C: <a class="trait" href="trait.BlockDecryptMut.html" title="trait cytryna::crypto::aes128_ctr::BlockDecryptMut">BlockDecryptMut</a> + BlockCipher,</span></h3></section></summary><div class="impl-items"><section id="method.decrypt_with_backend_mut" class="method trait-impl"><a class="src rightside" href="https://docs.rs/cbc/0.1.2/src/cbc/decrypt.rs.html#35">source</a><a href="#method.decrypt_with_backend_mut" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.decrypt_with_backend_mut" class="fn">decrypt_with_backend_mut</a>(
+    &amp;mut self,
+    f: impl BlockClosure&lt;BlockSize = &lt;<a class="struct" href="https://docs.rs/cbc/0.1.2/cbc/decrypt/struct.Decryptor.html" title="struct cbc::decrypt::Decryptor">Decryptor</a>&lt;C&gt; as BlockSizeUser&gt;::BlockSize&gt;
+)</h4></section></div></details><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-BlockDecryptMut-for-Alg" class="impl"><a href="#impl-BlockDecryptMut-for-Alg" class="anchor">§</a><h3 class="code-header">impl&lt;Alg&gt; <a class="trait" href="trait.BlockDecryptMut.html" title="trait cytryna::crypto::aes128_ctr::BlockDecryptMut">BlockDecryptMut</a> for Alg<span class="where fmt-newline">where
+    Alg: BlockDecrypt,</span></h3></section></div><script src="../../../implementors/cipher/block/trait.BlockDecryptMut.js" data-ignore-extern-crates="cbc" async></script></section></div></main></body></html>
