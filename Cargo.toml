@@ -3,5 +3,6 @@ members = [
 	"cytryna",
 	"readctr",
 	"smdhtool",
+	"mk3dsx",
 ]
 resolver = "2"
