@@ -7,4 +7,6 @@
 *.exefs
 *.firm
 *.txt
+*.elf
+*.3dsx
 /target
